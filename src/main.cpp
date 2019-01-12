@@ -4,6 +4,12 @@
 /// Create the example with dog and yellow dog.
 // Stupid example but clear to show concept
 class Dog{
+	/// add some mebers
+	int a;		//32 bit
+	int64_t b;	
+	int32_t d;	//32
+	bool e;	bool c;
+
 
 public:
 	Dog(){
