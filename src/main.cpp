@@ -2,8 +2,7 @@
 #include <iostream>
 #include <string>
 #include <curl/curl.h>
-
-
+#include <json.hpp>
 //
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -52,6 +51,7 @@ public:
 };
 
 
+using json = nlohmann::json;
 
 int main(int argc, char *argv[]) {
 	(void) argc;
@@ -76,4 +76,31 @@ int main(int argc, char *argv[]) {
 	std::cout << githubioS.getBuffer().length()<< std::endl;;
 
 	std::cout << "Hello Easy C++ project!" << std::endl;
+
+     try
+     {
+         // parsing input with a syntax error
+        auto js = json::parse(backlog.getBuffer());
+		auto txs = js.find("txs");
+		if (txs != js.end()){
+			std::cout << "Hellow txs " << txs->is_array() << std::endl;
+		}
+		for (auto i : (json::array_t) (*txs) ){
+		    if (i.is_array() ){}
+			else if ( i.is_object() ){
+				auto j = (json::object_t) i;
+				std::cout << "ver: "<< j["ver"] << " time "<< j["time"]<< " hash "<<j["hash"] <<std::endl;
+			} else if (i.is_primitive()){
+
+			}
+		}
+	 }
+     catch (json::parse_error& e)
+     {
+         // output exception information
+         std::cout << "message: " << e.what() << '\n'
+                   << "exception id: " << e.id << '\n'
+                   << "byte position of error: " << e.byte << std::endl;
+	 }
+
 }
