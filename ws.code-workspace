@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "/home/simson/work/banking_apps/furry-waddle"
+		}
+	],
+	"settings": {
+		"cquery.cacheDirectory": "${workspaceFolder}/.vscode/cquery_cached_index/",
+		"clang.cxxflags":["-std=c++17"],
+		// An extra set of command line arguments to give clang when indexing. Each list entry is a separate argument.
+		"cquery.index.extraClangArguments": ["-I./include/","-Wall","-Wextra"]
+	}
+}
