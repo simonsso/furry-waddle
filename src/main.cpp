@@ -19,23 +19,35 @@ struct transaction{
 //   8"Valuta" : "SEK",
 //   9"ISIN" : "SE0000422107"
 //  },
-	std::string date;
-	std::string isim;
 	double amount;
 	std::string curenecy;
-
+	uint32_t date;
+	std::string isim;
 };
 // ISO date to decimal encoded date
-int parse_date(std::string_view s){
-	if (s.size() == 0) {return 0;};
+unsigned int parse_date(std::string_view s){
+	if (s.size() != 10) {return 0;};
 	std::string::size_type sz;   // alias of size_t
 								//  s.data is unsafe - 
 	int date = std::stoi( s.data() ,&sz );
-	
-
+	if (sz != 4 ){
+		return  0;
+	}
+	s.remove_prefix(5);
+	date =date*100 + std::stoi( s.data() ,&sz );
+	if (sz != 2 ){
+		return  0;
+	}
+	s.remove_prefix(3);
+	date =date*100 + std::stoi( s.data() ,&sz );
+	if (sz != 2 ){
+		return  0;
+	}
 
 	return date;
 }
+
+
 // Handle both decimal points and decimal comma
 // regardless of locale setting
 double parse_substr(std::string_view s){
@@ -54,9 +66,10 @@ double parse_substr(std::string_view s){
 	}
 	if ( s[sz] == ',' || s[sz] == '.'){
 		s.remove_prefix(sz+1);
-		if ( int num_digits = s.length() ){
-			int d = std::stoi( s.data() );	
-			decimals = (double) d / std::pow(10.0,num_digits);
+		if ( s.length() ){
+			std::string::size_type sz;
+			int d = std::stoi( s.data() , &sz );	
+			decimals = (double) d / std::pow(10.0,sz);
 		}
 	}
 	decimals = integrer_part + decimals;
@@ -66,15 +79,7 @@ int main(int argc, char *argv[]) {
 	(void) argc;
 	(void) argv;
 
-
-    // std::string filename;
-    // if (argc == 2){
-    //     filename = argv[1];
-    // }else{
-    //     std::cout<<"Usage: " << argv[0] << "filename" <<std::endl;
-    //     exit (-1);
-    // }  std::ifstream file(filename);
-	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190126.csv" );
+	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
   
     if (infile.is_open()) {
         std::string line;
@@ -96,9 +101,9 @@ int main(int argc, char *argv[]) {
 
 			// Check if expected numer of fields is found 
 			if (field_index.size() == 9 ){
-				std::cout<< "Hello: "
-				<< line.substr(0,field_index[0])  // date
-				<< line.substr(field_index[8],12)              // isin
+				std::cout<< ""
+				<< parse_date(line.substr(0,field_index[0]-1))  // date1
+				<< line.substr(field_index[8],12)
 				<< parse_substr( line.substr(field_index[5], field_index[6] - field_index[5] -1 ))  // amount
 				<<std::endl;
 			}
