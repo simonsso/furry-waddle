@@ -6,7 +6,9 @@
 #include <list>
 #include <string_view>
 #include <cmath>
+#include <deque>
 struct transaction{
+	public:
 // 	{
 //   0"Datum" : "2016-05-26",
 //   1"Konto" : "ISK",
@@ -19,10 +21,13 @@ struct transaction{
 //   8"Valuta" : "SEK",
 //   9"ISIN" : "SE0000422107"
 //  },
-	double amount;
+	std::string isin;
 	std::string curenecy;
+	std::string sec_name;
+	double amount;
+	double courtage;
 	uint32_t date;
-	std::string isim;
+
 };
 // ISO date to decimal encoded date
 unsigned int parse_date(std::string_view s){
@@ -75,6 +80,10 @@ double parse_substr(std::string_view s){
 	decimals = integrer_part + decimals;
 	return (signbit? -(double) decimals : (double) decimals);;
 }
+
+
+
+
 int main(int argc, char *argv[]) {
 	(void) argc;
 	(void) argv;
@@ -88,6 +97,14 @@ int main(int argc, char *argv[]) {
 			std::cout << "Error reading headers"<< std::endl;
 			exit (-1);
 		}
+
+
+		/// Transactions can be added to ledger but never removed. Iterators will be valid
+		std::deque<transaction> ledger;
+	 	std::map<std::string,std::list<decltype(ledger.end())>> isin_index;
+
+
+
         while (getline(infile,line)) {
             const char *index = nullptr;
             index = line.c_str();
@@ -101,13 +118,88 @@ int main(int argc, char *argv[]) {
 
 			// Check if expected numer of fields is found 
 			if (field_index.size() == 9 ){
-				std::cout<< ""
-				<< parse_date(line.substr(0,field_index[0]-1))  // date1
-				<< line.substr(field_index[8],12)
-				<< parse_substr( line.substr(field_index[5], field_index[6] - field_index[5] -1 ))  // amount
-				<<std::endl;
+				// std::cout<< ""
+				// << parse_date(line.substr(0,field_index[0]-1))  // date1
+				// << line.substr(field_index[8],12)
+				// << parse_substr( line.substr(field_index[5], field_index[6] - field_index[5] -1 ))  // amount
+				// <<std::endl;
+				// 	{
+				//   0"Datum" : "2016-05-26",
+				//   0-1"Konto" : "ISK",
+				//   1-2"Typ av transaktion" : "Split",
+				//   2-3"Värdepapper/beskrivning" : "FING B",
+				//   3-4"Antal" : -67,
+				//   4-5"Kurs" : 297.91,
+				//   5-6"Belopp" : "-",
+				//   6-7"Courtage" : "-",
+				//   7-8"Valuta" : "SEK",
+				//   9"ISIN" : "SE0000422107"
+				//  },
+				auto isin = line.substr(field_index[8],12) ;
+
+				transaction t;
+				t.date =   parse_date(line.substr(0,field_index[0]-1)) ;
+				t.amount = parse_substr( line.substr(field_index[5], field_index[6] - field_index[5] -1 )) ;
+				t.isin = isin;
+				t.curenecy = line.substr(field_index[7], 3);
+				t.sec_name = line.substr(field_index[2], field_index[3]-field_index[2]-1);
+				t.courtage = parse_substr(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
+
+				auto iter = ledger.insert(ledger.end(), t) ;
+
+				/// create an index with isin
+				isin_index[isin].push_front( iter); 
 			}
         }
         infile.close();
+
+		//  Calculate total sum for all 
+		for (auto i: isin_index) {
+			double sum = 0;
+			// i.second is a list of all tranactions with one security in same order
+			// as found on ledger - which was sorted.
+			for(auto j: i.second) {
+				sum += j->amount;
+				std::cout << "   "<< j->date  << " : " << j->sec_name  << " : " << j->amount <<std::endl;
+			}
+			std::cout << i.first<<" Sum: "<<sum <<std::endl ;		
+		}
+		// Todo here are some good candidates for refacoring
+
+		// Some Securities have spilit/merged or created warants with own isin number
+		// Transatlantic:
+		// SE0010546390 SE0010546408 SE0010820613 SE0009382856 SE0000143521
+		double sum = 0;
+		for (auto s : {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" }){
+			for(auto j : isin_index[s] ){
+				sum += j->amount;
+			}
+		};
+		std::cout <<std::endl <<std::endl <<std::endl << "Transatlantic Sum: "<<sum <<std::endl ;
+		// Inside: SE0004751337 SE0004113926
+		sum = 0;
+		for (auto s : {"SE0004751337","SE0004113926"}){
+			for(auto j : isin_index[s] ){
+				sum += j->amount;
+			}
+		};
+		std::cout << "Insite Asia/Australia Sum: "<<sum <<std::endl ;
+		// fpc: SE0000422107 SE0008374250
+		sum = 0;
+		for (auto s : {"SE0000422107","SE0008374250"}){
+			for(auto j : isin_index[s] ){
+				sum += j->amount;
+			}
+		};
+		std::cout << "FPC Sum: "<<sum <<std::endl ;
+		// adv: SE0009888803 SE0012116267 SE0006219473
+
+		sum = 0;
+		for (auto s : {"SE0009888803","SE0012116267","SE0006219473"}){
+			for(auto j : isin_index[s] ){
+				sum += j->amount;
+			}
+		};
+		std::cout << "Advenica Sum: "<<sum <<std::endl ;
     }
 }
