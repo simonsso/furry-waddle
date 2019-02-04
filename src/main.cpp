@@ -7,6 +7,8 @@
 #include <string_view>
 #include <cmath>
 #include <deque>
+
+#include <chrono>
 struct transaction{
 	public:
 // 	{
@@ -104,7 +106,7 @@ int main(int argc, char *argv[]) {
 	 	std::map<std::string,std::list<decltype(ledger.end())>> isin_index;
 
 
-
+		auto t1 = std::chrono::high_resolution_clock::now();
         while (getline(infile,line)) {
             const char *index = nullptr;
             index = line.c_str();
@@ -146,13 +148,27 @@ int main(int argc, char *argv[]) {
 				t.courtage = parse_substr(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
 
 				auto iter = ledger.insert(ledger.end(), t) ;
-
+				
 				/// create an index with isin
+				
+				/// With create of index: Reading data took 0.00309825
+				/// Without               Reading data took 0.00277055
+                ///                                         0.0003277
+				/// Using index:
+				/// Gathering data took 1.0169e-05
+				/// fetching data took 0.000367927
+
+				/// Conclusion the cost of creating the index is payed back the first time it is used !
+	
+				
 				isin_index[isin].push_front( iter); 
 			}
         }
-        infile.close();
+		auto t2 = std::chrono::high_resolution_clock::now();
 
+        infile.close();
+		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+		std::cout<<"Reading data took "<< time_span.count()<<std::endl<<std::endl <<std::endl <<std::endl;
 		//  Calculate total sum for all 
 		for (auto i: isin_index) {
 			double sum = 0;
@@ -169,23 +185,57 @@ int main(int argc, char *argv[]) {
 		// Some Securities have spilit/merged or created warants with own isin number
 		// Transatlantic:
 		// SE0010546390 SE0010546408 SE0010820613 SE0009382856 SE0000143521
-		double sum = 0;
-		for (auto s : {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" }){
-			for(auto j : isin_index[s] ){
-				sum += j->amount;
-			}
+		{
+			double sum = 0;
+			auto t1 = std::chrono::high_resolution_clock::now();
+
+			for (auto s : {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" }){
+				for(auto j : isin_index[s] ){
+					sum += j->amount;
+				}
+			};
+			auto t2 = std::chrono::high_resolution_clock::now();
+
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
+			std::cout << "Transatlantic Sum: "<<sum <<std::endl ;
 		};
-		std::cout <<std::endl <<std::endl <<std::endl << "Transatlantic Sum: "<<sum <<std::endl ;
-		// Inside: SE0004751337 SE0004113926
-		sum = 0;
-		for (auto s : {"SE0004751337","SE0004113926"}){
-			for(auto j : isin_index[s] ){
-				sum += j->amount;
+		// Calculate the same data based on ledger:
+		// This is the naive approach without indexes to collect data
+		// In this small example it is 100 times slower
+		{
+			double sum = 0;
+			auto t1 = std::chrono::high_resolution_clock::now();
+
+			for(auto j : ledger ){
+				if( j.isin == "SE0010546390" ||
+					j.isin ==  "SE0010546408"||
+					j.isin == "SE0010820613"||
+					j.isin == "SE0009382856"||
+					j.isin == "SE0000143521"
+				){				
+					sum += j.amount;
+				}
 			}
+			
+			auto t2 = std::chrono::high_resolution_clock::now();
+
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout<<"fetching data took "<< time_span.count()<<std::endl;
+			std::cout  << "Transatlantic Sum: "<<sum <<std::endl ;
 		};
-		std::cout << "Insite Asia/Australia Sum: "<<sum <<std::endl ;
+		{
+			// Inside: SE0004751337 SE0004113926
+			double sum = 0;
+			for (auto s : {"SE0004751337","SE0004113926"}){
+				for(auto j : isin_index[s] ){
+					sum += j->amount;
+				}
+			};
+			std::cout << "Insite Asia/Australia Sum: "<<sum <<std::endl ;
+		}
 		// fpc: SE0000422107 SE0008374250
-		sum = 0;
+		double sum = 0;
 		for (auto s : {"SE0000422107","SE0008374250"}){
 			for(auto j : isin_index[s] ){
 				sum += j->amount;
