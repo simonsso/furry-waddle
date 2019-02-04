@@ -35,7 +35,7 @@ struct transaction{
 unsigned int parse_date(std::string_view s){
 	if (s.size() != 10) {return 0;};
 	std::string::size_type sz;   // alias of size_t
-								//  s.data is unsafe - 
+								//  s.data is unsafe -
 	int date = std::stoi( s.data() ,&sz );
 	if (sz != 4 ){
 		return  0;
@@ -66,7 +66,7 @@ double parse_substr(std::string_view s){
 	if (s.size() == 0) {return 0;};
 	double decimals = 0;
 	std::string::size_type sz;   // alias of size_t
-								//  s.data is unsafe - 
+								//  s.data is unsafe -
 	int integrer_part = std::stoi( s.data() ,&sz );
 	if (sz >=s.length() ){
 		return (signbit? -(double) integrer_part : (double) integrer_part);
@@ -75,7 +75,7 @@ double parse_substr(std::string_view s){
 		s.remove_prefix(sz+1);
 		if ( s.length() ){
 			std::string::size_type sz;
-			int d = std::stoi( s.data() , &sz );	
+			int d = std::stoi( s.data() , &sz );
 			decimals = (double) d / std::pow(10.0,sz);
 		}
 	}
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 	(void) argv;
 
 	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
-  
+
     if (infile.is_open()) {
         std::string line;
 		//read and ignore first line
@@ -116,9 +116,9 @@ int main(int argc, char *argv[]) {
 				if (*index++ == ';'){
 					field_index.push_back(index-index0);
 				}
-			}	
+			}
 
-			// Check if expected numer of fields is found 
+			// Check if expected numer of fields is found
 			if (field_index.size() == 9 ){
 				// std::cout<< ""
 				// << parse_date(line.substr(0,field_index[0]-1))  // date1
@@ -148,9 +148,9 @@ int main(int argc, char *argv[]) {
 				t.courtage = parse_substr(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
 
 				auto iter = ledger.insert(ledger.end(), t) ;
-				
+
 				/// create an index with isin
-				
+
 				/// With create of index: Reading data took 0.00309825
 				/// Without               Reading data took 0.00277055
                 ///                                         0.0003277
@@ -159,9 +159,9 @@ int main(int argc, char *argv[]) {
 				/// fetching data took 0.000367927
 
 				/// Conclusion the cost of creating the index is payed back the first time it is used !
-	
-				
-				isin_index[isin].push_front( iter); 
+
+
+				isin_index[isin].push_front( iter);
 			}
         }
 		auto t2 = std::chrono::high_resolution_clock::now();
@@ -169,16 +169,20 @@ int main(int argc, char *argv[]) {
         infile.close();
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 		std::cout<<"Reading data took "<< time_span.count()<<std::endl<<std::endl <<std::endl <<std::endl;
-		//  Calculate total sum for all 
+		//  Calculate total sum for all
 		for (auto i: isin_index) {
 			double sum = 0;
+			auto t1 = std::chrono::high_resolution_clock::now();
 			// i.second is a list of all tranactions with one security in same order
 			// as found on ledger - which was sorted.
 			for(auto j: i.second) {
 				sum += j->amount;
-				std::cout << "   "<< j->date  << " : " << j->sec_name  << " : " << j->amount <<std::endl;
+	//			std::cout << "   "<< j->date  << " : " << j->sec_name  << " : " << j->amount <<std::endl;
 			}
-			std::cout << i.first<<" Sum: "<<sum <<std::endl ;		
+			auto t2 = std::chrono::high_resolution_clock::now();
+
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout << i.first<<" Sum: "<<sum <<"    Gathering data took "<< time_span.count()<<std::endl;
 		}
 		// Todo here are some good candidates for refacoring
 
@@ -195,6 +199,7 @@ int main(int argc, char *argv[]) {
 				}
 			};
 			auto t2 = std::chrono::high_resolution_clock::now();
+			//auto t1 = std::chrono::high_resolution_clock::now();
 
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
@@ -213,16 +218,35 @@ int main(int argc, char *argv[]) {
 					j.isin == "SE0010820613"||
 					j.isin == "SE0009382856"||
 					j.isin == "SE0000143521"
-				){				
+				){
 					sum += j.amount;
 				}
 			}
-			
+
 			auto t2 = std::chrono::high_resolution_clock::now();
 
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout<<"fetching data took "<< time_span.count()<<std::endl;
 			std::cout  << "Transatlantic Sum: "<<sum <<std::endl ;
+		};
+				// Calculate the same data based on ledger:
+		// This is the naive approach without indexes to collect data
+		// In this small example it is 100 times slower
+		{
+			double sum = 0;
+			auto t1 = std::chrono::high_resolution_clock::now();
+
+			for(auto j : ledger ){
+				if( j.isin == "LU0050427557" ){
+					sum += j.amount;
+				}
+			}
+
+			auto t2 = std::chrono::high_resolution_clock::now();
+
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout<<"fetching data took "<< time_span.count()<<std::endl;
+			std::cout  << "LU0050427557 Sum: "<<sum <<std::endl ;
 		};
 		{
 			// Inside: SE0004751337 SE0004113926
