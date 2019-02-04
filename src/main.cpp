@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
 		/// Transactions can be added to ledger but never removed. Iterators will be valid
 		std::deque<transaction> ledger;
 	 	std::map<std::string,std::list<decltype(ledger.end())>> isin_index;
+		std::map<unsigned int,decltype(ledger.end())> date_index;
 
 
 		auto t1 = std::chrono::high_resolution_clock::now();
@@ -120,12 +121,8 @@ int main(int argc, char *argv[]) {
 
 			// Check if expected numer of fields is found
 			if (field_index.size() == 9 ){
-				// std::cout<< ""
-				// << parse_date(line.substr(0,field_index[0]-1))  // date1
-				// << line.substr(field_index[8],12)
-				// << parse_substr( line.substr(field_index[5], field_index[6] - field_index[5] -1 ))  // amount
-				// <<std::endl;
-				// 	{
+				// This is the expected fields
+				// 	{ 
 				//   0"Datum" : "2016-05-26",
 				//   0-1"Konto" : "ISK",
 				//   1-2"Typ av transaktion" : "Split",
@@ -150,7 +147,8 @@ int main(int argc, char *argv[]) {
 				auto iter = ledger.insert(ledger.end(), t) ;
 
 				/// create an index with isin
-
+				/// TOTAL execution time - two iterations
+				/// =====================================
 				/// With create of index: Reading data took 0.00309825
 				/// Without               Reading data took 0.00277055
                 ///                                         0.0003277
@@ -158,10 +156,12 @@ int main(int argc, char *argv[]) {
 				/// Gathering data took 1.0169e-05
 				/// fetching data took 0.000367927
 
-				/// Conclusion the cost of creating the index is payed back the first time it is used !
-
+				/// Conclusion:: the cost of creating the index is payed back the first time it is used !
 
 				isin_index[isin].push_front( iter);
+
+				// Save iterator first date in index.
+				date_index.emplace(t.date,iter);
 			}
         }
 		auto t2 = std::chrono::high_resolution_clock::now();
@@ -177,7 +177,6 @@ int main(int argc, char *argv[]) {
 			// as found on ledger - which was sorted.
 			for(auto j: i.second) {
 				sum += j->amount;
-	//			std::cout << "   "<< j->date  << " : " << j->sec_name  << " : " << j->amount <<std::endl;
 			}
 			auto t2 = std::chrono::high_resolution_clock::now();
 
@@ -199,7 +198,6 @@ int main(int argc, char *argv[]) {
 				}
 			};
 			auto t2 = std::chrono::high_resolution_clock::now();
-			//auto t1 = std::chrono::high_resolution_clock::now();
 
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
@@ -229,7 +227,7 @@ int main(int argc, char *argv[]) {
 			std::cout<<"fetching data took "<< time_span.count()<<std::endl;
 			std::cout  << "Transatlantic Sum: "<<sum <<std::endl ;
 		};
-				// Calculate the same data based on ledger:
+		// Calculate the same data based on ledger:
 		// This is the naive approach without indexes to collect data
 		// In this small example it is 100 times slower
 		{
@@ -249,7 +247,7 @@ int main(int argc, char *argv[]) {
 			std::cout  << "LU0050427557 Sum: "<<sum <<std::endl ;
 		};
 		{
-			// Inside: SE0004751337 SE0004113926
+			// Inside Asia --> Inside Australia: SE0004751337 SE0004113926
 			double sum = 0;
 			for (auto s : {"SE0004751337","SE0004113926"}){
 				for(auto j : isin_index[s] ){
@@ -275,5 +273,72 @@ int main(int argc, char *argv[]) {
 			}
 		};
 		std::cout << "Advenica Sum: "<<sum <<std::endl ;
+
+		// calculate coutrage in March and April 2017
+		// Implementation 2
+		// Run this code twice if cache state have impact on exectuton time
+		{
+			auto t1 = std::chrono::high_resolution_clock::now();
+
+			decltype(date_index.begin()) b = date_index.lower_bound(20170301);
+
+			double sum = 0;
+			if (b != date_index.end() ){
+				for( decltype(ledger.begin()) i = b->second ; i != ledger.begin(); --i){
+					if (i->date >= 20170501 ){
+						break;
+					}else{
+						sum += i->courtage;
+					}
+				}
+			}
+			auto t2 = std::chrono::high_resolution_clock::now();
+			std::cout<< sum <<" Courtage payed in April" <<std::endl;
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
+		}
+
+		// calculate coutrage in March and April 2017
+		// implementation 1
+		{
+			auto t1 = std::chrono::high_resolution_clock::now();
+
+			decltype(date_index.begin()) b = date_index.lower_bound(20170301);
+			decltype(date_index.begin()) e = date_index.upper_bound(20170501);
+
+			double sum = 0;
+			if (b != date_index.end() ){
+				for( decltype(ledger.begin()) i = b->second ;i !=e->second ; --i){
+					sum += i->courtage;
+				}
+			}
+			auto t2 = std::chrono::high_resolution_clock::now();
+			std::cout<< sum <<" Courtage payed in April" <<std::endl;
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
+		}
+
+		// calculate coutrage in March and April 2017
+		// Implementation 2
+		{
+			auto t1 = std::chrono::high_resolution_clock::now();
+
+			decltype(date_index.begin()) b = date_index.lower_bound(20170301);
+
+			double sum = 0;
+			if (b != date_index.end() ){
+				for( decltype(ledger.begin()) i = b->second ; i != ledger.begin(); --i){
+					if (i->date >= 20170501 ){
+						break;
+					}else{
+						sum += i->courtage;
+					}
+				}
+			}
+			auto t2 = std::chrono::high_resolution_clock::now();
+			std::cout<< sum <<" Courtage payed in April" <<std::endl;
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
+		}
     }
 }
