@@ -7,7 +7,9 @@
 #include <string_view>
 #include <cmath>
 #include <deque>
+#include <thread>
 
+#include <sys/socket.h>
 #include <chrono>
 class transaction{
 	public:
@@ -84,8 +86,6 @@ double parse_number(std::string_view s){
 	decimals = integrer_part + decimals;
 	return (signbit? -(double) decimals : (double) decimals);;
 }
-
-
 
 
 
@@ -341,11 +341,107 @@ public:
     }
 };
 
+Ledger avanza;
+
+void error(){
+
+}
+#include <sys/types.h>
+#include <iostream>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netdb.h>
+#include <cstring>
+#include <unistd.h>
+
+void network_me(){
+
+	int socketObject = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	struct sockaddr_in serverObject;
+
+	int portNumber = 9000;
+
+	/**
+     * We use memset() of cstring header
+     * to set all uninitialized values of
+     * the struct serverObject to zero.
+     */
+	memset(&serverObject, 0, sizeof(serverObject));
+
+	// now set the values properly
+	serverObject.sin_family = AF_INET;
+	serverObject.sin_addr.s_addr = htonl(INADDR_ANY);
+	serverObject.sin_port = htons(portNumber);
+
+
+    int returnStatus = bind(socketObject, (struct sockaddr *) &serverObject,
+                                sizeof(serverObject));
+
+    if (returnStatus != 0) {
+                fprintf(stderr, "Cannot do the binding. Socket closed.");
+                close(socketObject);
+            exit(1);
+    }
+
+    returnStatus = listen(socketObject, 5); // 5 is a typical value for backlog
+            // which denotes the number of allowed connections in queue, After linux 2.2,
+            // only completed connections are counted in the queue.
+
+    if (returnStatus == -1) {
+                fprintf(stderr, "Cannot listen on the socketl.");
+                close(socketObject);
+                exit(1);
+    }
+
+    while (1) {
+		std::cout << "Server has started successfully. Info:" << std::endl;
+		std::cout << "Port Number Listening to: " <<  portNumber << std::endl;
+
+		int simpleChildSocket = 0;
+		struct sockaddr clientSocket = {0};
+		int simpleClient = 0;
+		socklen_t clientNameLength = sizeof(clientSocket);
+
+
+		std::cout << "Listening Status:" << returnStatus << std::endl;
+
+		/** blocking-state. accept() is a blocking
+		 *  function essentially.
+		 * **/
+		simpleChildSocket = accept(socketObject, &clientSocket, &clientNameLength);
+		std::cout << "Accept Connection Status: " << simpleChildSocket << std::endl;
+		if (simpleChildSocket == -1) {
+			fprintf(stderr, "Cannot accept connectios.\n");
+			close(socketObject);
+			exit(1);
+		}
+
+		/**
+ 		* Handle the incoming request
+		* write received data from the server
+		*/
+
+		write(simpleChildSocket, "HelloHello", sizeof("HelloHello"));
+
+
+		// closing the child socket
+		close(simpleChildSocket);
+	}
+	close(socketObject);
+};
+
+
+
+
 int main(int argc, char *argv[]) {
 	(void) argc;
 	(void) argv;
+	std::thread t1(	network_me );
+	t1.join();
 
-	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
+/* 	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
 
     if (infile.is_open()) {
         std::string line;
@@ -354,10 +450,9 @@ int main(int argc, char *argv[]) {
 			std::cout << "Error reading headers"<< std::endl;
 			exit (-1);
 		}
-		Ledger avanza;
 		avanza.import_csv(infile);
 	    infile.close();
 		avanza.find_something();
-
-	}
+	} */
 }
+
