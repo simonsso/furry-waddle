@@ -11,6 +11,9 @@
 
 #include <sys/socket.h>
 #include <chrono>
+
+#include <boost/asio.hpp>
+
 class transaction{
 	public:
 /// Field names from data set
@@ -188,6 +191,29 @@ public:
 		return t;
 	}
 
+
+	transaction sum_string (const std::string & isin ){
+		double courtage = 0;
+		double amount = 0;
+		transaction t;
+		auto t1 = std::chrono::high_resolution_clock::now();
+		auto s = isin.substr(0, 12);
+
+		for(auto j : isin_index[s] ){
+			amount += j->amount;
+			courtage += j->courtage;
+		}
+
+		auto t2 = std::chrono::high_resolution_clock::now();
+
+		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+		std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
+		std::cout << "Transgalactic Sum: "<< amount <<std::endl ;
+
+		t.amount = amount;
+		t.courtage = courtage;
+		return t;
+	}
 	double april(int startdate,int stopdate) {
 		auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -255,95 +281,49 @@ public:
 
 Ledger avanza;
 
-void error(){
 
+using boost::asio::ip::tcp;
+
+std::string make_daytime_string()
+{
+  using namespace std; // For time_t, time and ctime;
+  time_t now = time(0);
+  return ctime(&now);
 }
-#include <sys/types.h>
-#include <iostream>
-#include <stdio.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netdb.h>
-#include <cstring>
-#include <unistd.h>
 
-void network_me(){
+int network_me()
+{
+  try
+  {
+    boost::asio::io_service io_service;
 
-	int socketObject = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    tcp::endpoint endpoint(tcp::v4(), 9000);
+    tcp::acceptor acceptor(io_service, endpoint);
 
-	struct sockaddr_in serverObject;
+    for (;;)
+    {
+      tcp::iostream stream;
+      acceptor.accept(*stream.rdbuf());
+	  std::string buf;
+	  std::getline(stream, buf );
+	  std::string_view request = buf;
 
-	int portNumber = 9000;
-
-	/**
-     * We use memset() of cstring header
-     * to set all uninitialized values of
-     * the struct serverObject to zero.
-     */
-	memset(&serverObject, 0, sizeof(serverObject));
-
-	// now set the values properly
-	serverObject.sin_family = AF_INET;
-	serverObject.sin_addr.s_addr = htonl(INADDR_ANY);
-	serverObject.sin_port = htons(portNumber);
-
-
-    int returnStatus = bind(socketObject, (struct sockaddr *) &serverObject,
-                                sizeof(serverObject));
-
-    if (returnStatus != 0) {
-                fprintf(stderr, "Cannot do the binding. Socket closed.");
-                close(socketObject);
-            exit(1);
+	  request.remove_suffix(1);
+	  if (request == "EXIT" ) {
+		  return 0;
+	  }
+	  auto ans = avanza.sum_string(buf);
+      stream << ans.amount<< std::endl; 
     }
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << e.what() << std::endl;
+  }
 
-    returnStatus = listen(socketObject, 5); // 5 is a typical value for backlog
-            // which denotes the number of allowed connections in queue, After linux 2.2,
-            // only completed connections are counted in the queue.
+  return 0;
+}
 
-    if (returnStatus == -1) {
-                fprintf(stderr, "Cannot listen on the socketl.");
-                close(socketObject);
-                exit(1);
-    }
-
-    while (1) {
-		std::cout << "Server has started successfully. Info:" << std::endl;
-		std::cout << "Port Number Listening to: " <<  portNumber << std::endl;
-
-		int simpleChildSocket = 0;
-		struct sockaddr clientSocket = {0};
-		int simpleClient = 0;
-		socklen_t clientNameLength = sizeof(clientSocket);
-
-
-		std::cout << "Listening Status:" << returnStatus << std::endl;
-
-		/** blocking-state. accept() is a blocking
-		 *  function essentially.
-		 * **/
-		simpleChildSocket = accept(socketObject, &clientSocket, &clientNameLength);
-		std::cout << "Accept Connection Status: " << simpleChildSocket << std::endl;
-		if (simpleChildSocket == -1) {
-			fprintf(stderr, "Cannot accept connectios.\n");
-			close(socketObject);
-			exit(1);
-		}
-
-		/**
- 		* Handle the incoming request
-		* write received data from the server
-		*/
-
-		write(simpleChildSocket, "HelloHello", sizeof("HelloHello"));
-		avanza.sum( {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" } );
-
-
-		// closing the child socket
-		close(simpleChildSocket);
-	}
-	close(socketObject);
-};
 
 
 
@@ -365,7 +345,7 @@ int main(int argc, char *argv[]) {
 		avanza.import_csv(infile);
 	    infile.close();
 	}
-	avanza.find_something();
+	//avanza.find_something();
 	avanza.sum( {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" } );
 
 	avanza.sum( {"LU0050427557"});

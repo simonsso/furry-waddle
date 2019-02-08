@@ -6,7 +6,7 @@ SRC		:= src
 INCLUDE	:= include
 LIB		:= lib
 
-LIBRARIES	:=  -pthread
+LIBRARIES	:=  -pthread -l boost_system
 
 ifeq ($(OS),Windows_NT)
 EXECUTABLE	:= main.exe
