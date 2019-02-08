@@ -56,7 +56,7 @@ unsigned int parse_date(std::string_view s){
 
 // Handle both decimal points and decimal comma
 // regardless of locale setting
-double parse_substr(std::string_view s){
+double parse_number(std::string_view s){
 	bool signbit = false;
 	if( s[0] == '-' ) {
 		signbit = true;
@@ -137,11 +137,11 @@ int main(int argc, char *argv[]) {
 
 				transaction t;
 				t.date =   parse_date(line.substr(0,field_index[0]-1)) ;
-				t.amount = parse_substr( line.substr(field_index[5], field_index[6] - field_index[5] -1 )) ;
+				t.amount = parse_number( line.substr(field_index[5], field_index[6] - field_index[5] -1 )) ;
 				t.isin = isin;
 				t.curenecy = line.substr(field_index[7], 3);
 				t.sec_name = line.substr(field_index[2], field_index[3]-field_index[2]-1);
-				t.courtage = parse_substr(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
+				t.courtage = parse_number(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
 
 				auto iter = ledger.insert(ledger.end(), t) ;
 
