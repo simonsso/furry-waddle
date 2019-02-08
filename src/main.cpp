@@ -9,7 +9,7 @@
 #include <deque>
 
 #include <chrono>
-struct transaction{
+class transaction{
 	public:
 // 	{
 //   0"Datum" : "2016-05-26",
@@ -29,7 +29,6 @@ struct transaction{
 	double amount;
 	double courtage;
 	uint32_t date;
-
 };
 // ISO date to decimal encoded date
 unsigned int parse_date(std::string_view s){
