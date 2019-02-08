@@ -165,6 +165,48 @@ public:
 		std::cout<<"Reading data took "<< time_span.count()<<std::endl<<std::endl <<std::endl <<std::endl;
 		return ;
 	}
+	transaction sum (const std::vector<std::string>& isin ){
+		double courtage = 0;
+		double amount = 0;
+		transaction t;
+		auto t1 = std::chrono::high_resolution_clock::now();
+
+		for (auto s : isin ){
+			for(auto j : isin_index[s] ){
+				amount += j->amount;
+				courtage += j->courtage;
+			}
+		};
+		auto t2 = std::chrono::high_resolution_clock::now();
+
+		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+		std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
+		std::cout << "Transgalactic Sum: "<< amount <<std::endl ;
+
+		t.amount = amount;
+		t.courtage = courtage;
+		return t;
+	}
+
+	double april(int startdate,int stopdate) {
+		auto t1 = std::chrono::high_resolution_clock::now();
+
+		decltype(date_index.begin()) b = date_index.lower_bound(startdate);
+		decltype(date_index.begin()) e = date_index.upper_bound(stopdate);
+
+		double sum = 0;
+		if (b != date_index.end() ){
+			for( decltype(ledger.begin()) i = b->second ;i !=e->second ; --i){
+				sum += i->courtage;
+			}
+		}
+		auto t2 = std::chrono::high_resolution_clock::now();
+		std::cout<< sum <<" Courtage payed in April" <<std::endl;
+		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+		std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
+	return sum;
+	}
+
 	/// Orignal seach code moved into this function.
 	void find_something(){
 		//  Calculate total sum for all
@@ -180,70 +222,7 @@ public:
 
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout << i.first<<" Sum: "<<sum <<"    Gathering data took "<< time_span.count()<<std::endl;
-		}
-		// Todo here are some good candidates for refacoring
-
-		// Some Securities have spilit/merged or created warants with own isin number
-		// Transatlantic:
-		// SE0010546390 SE0010546408 SE0010820613 SE0009382856 SE0000143521
-		{
-			double sum = 0;
-			auto t1 = std::chrono::high_resolution_clock::now();
-
-			for (auto s : {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" }){
-				for(auto j : isin_index[s] ){
-					sum += j->amount;
-				}
-			};
-			auto t2 = std::chrono::high_resolution_clock::now();
-
-			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-			std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
-			std::cout << "Transatlantic Sum: "<<sum <<std::endl ;
-		};
-		// Calculate the same data based on ledger:
-		// This is the naive approach without indexes to collect data
-		// In this small example it is 100 times slower
-		{
-			double sum = 0;
-			auto t1 = std::chrono::high_resolution_clock::now();
-
-			for(auto j : ledger ){
-				if( j.isin == "SE0010546390" ||
-					j.isin ==  "SE0010546408"||
-					j.isin == "SE0010820613"||
-					j.isin == "SE0009382856"||
-					j.isin == "SE0000143521"
-				){
-					sum += j.amount;
-				}
-			}
-
-			auto t2 = std::chrono::high_resolution_clock::now();
-
-			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-			std::cout<<"fetching data took "<< time_span.count()<<std::endl;
-			std::cout  << "Transatlantic Sum: "<<sum <<std::endl ;
-		};
-		// Calculate the same data based on ledger:
-		// This is the naive approach without indexes to collect data
-		// In this small example it is 100 times slower
-		{
-			double sum = 0;
-			auto t1 = std::chrono::high_resolution_clock::now();
-
-			for(auto j : ledger ){
-				if( j.isin == "LU0050427557" ){
-					sum += j.amount;
-				}
-			}
-
-			auto t2 = std::chrono::high_resolution_clock::now();
-
-			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-			std::cout<<"fetching data took "<< time_span.count()<<std::endl;
-			std::cout  << "LU0050427557 Sum: "<<sum <<std::endl ;
-		};
+		}		
 		{
 			// Inside Asia --> Inside Australia: SE0004751337 SE0004113926
 			double sum = 0;
@@ -271,73 +250,6 @@ public:
 			}
 		};
 		std::cout << "Advenica Sum: "<<sum <<std::endl ;
-
-		// calculate coutrage in March and April 2017
-		// Implementation 2
-		// Run this code twice if cache state have impact on exectuton time
-		{
-			auto t1 = std::chrono::high_resolution_clock::now();
-
-			decltype(date_index.begin()) b = date_index.lower_bound(20170301);
-
-			double sum = 0;
-			if (b != date_index.end() ){
-				for( decltype(ledger.begin()) i = b->second ; i != ledger.begin(); --i){
-					if (i->date >= 20170501 ){
-						break;
-					}else{
-						sum += i->courtage;
-					}
-				}
-			}
-			auto t2 = std::chrono::high_resolution_clock::now();
-			std::cout<< sum <<" Courtage payed in April" <<std::endl;
-			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-			std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
-		}
-
-		// calculate coutrage in March and April 2017
-		// implementation 1
-		{
-			auto t1 = std::chrono::high_resolution_clock::now();
-
-			decltype(date_index.begin()) b = date_index.lower_bound(20170301);
-			decltype(date_index.begin()) e = date_index.upper_bound(20170501);
-
-			double sum = 0;
-			if (b != date_index.end() ){
-				for( decltype(ledger.begin()) i = b->second ;i !=e->second ; --i){
-					sum += i->courtage;
-				}
-			}
-			auto t2 = std::chrono::high_resolution_clock::now();
-			std::cout<< sum <<" Courtage payed in April" <<std::endl;
-			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-			std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
-		}
-
-		// calculate coutrage in March and April 2017
-		// Implementation 2
-		{
-			auto t1 = std::chrono::high_resolution_clock::now();
-
-			decltype(date_index.begin()) b = date_index.lower_bound(20170301);
-
-			double sum = 0;
-			if (b != date_index.end() ){
-				for( decltype(ledger.begin()) i = b->second ; i != ledger.begin(); --i){
-					if (i->date >= 20170501 ){
-						break;
-					}else{
-						sum += i->courtage;
-					}
-				}
-			}
-			auto t2 = std::chrono::high_resolution_clock::now();
-			std::cout<< sum <<" Courtage payed in April" <<std::endl;
-			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-			std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
-		}
     }
 };
 
@@ -424,6 +336,7 @@ void network_me(){
 		*/
 
 		write(simpleChildSocket, "HelloHello", sizeof("HelloHello"));
+		avanza.sum( {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" } );
 
 
 		// closing the child socket
@@ -439,9 +352,8 @@ int main(int argc, char *argv[]) {
 	(void) argc;
 	(void) argv;
 	std::thread t1(	network_me );
-	t1.join();
 
-/* 	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
+	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
 
     if (infile.is_open()) {
         std::string line;
@@ -452,7 +364,14 @@ int main(int argc, char *argv[]) {
 		}
 		avanza.import_csv(infile);
 	    infile.close();
-		avanza.find_something();
-	} */
+	}
+	avanza.find_something();
+	avanza.sum( {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" } );
+
+	avanza.sum( {"LU0050427557"});
+
+	avanza.sum( {});
+	t1.join();
+
 }
 
