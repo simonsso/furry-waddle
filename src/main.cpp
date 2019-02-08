@@ -11,6 +11,7 @@
 #include <chrono>
 class transaction{
 	public:
+/// Field names from data set
 // 	{
 //   0"Datum" : "2016-05-26",
 //   1"Konto" : "ISK",
@@ -56,6 +57,8 @@ unsigned int parse_date(std::string_view s){
 
 // Handle both decimal points and decimal comma
 // regardless of locale setting
+// Todo: This could be replaced with a fixed point class
+// but for now double is good.
 double parse_number(std::string_view s){
 	bool signbit = false;
 	if( s[0] == '-' ) {
@@ -85,27 +88,18 @@ double parse_number(std::string_view s){
 
 
 
-int main(int argc, char *argv[]) {
-	(void) argc;
-	(void) argv;
-
-	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
-
-    if (infile.is_open()) {
-        std::string line;
-		//read and ignore first line
-		if(	! getline(infile,line) ){
-			std::cout << "Error reading headers"<< std::endl;
-			exit (-1);
-		}
 
 
+class Ledger{
 		/// Transactions can be added to ledger but never removed. Iterators will be valid
 		std::deque<transaction> ledger;
 	 	std::map<std::string,std::list<decltype(ledger.end())>> isin_index;
 		std::map<unsigned int,decltype(ledger.end())> date_index;
 
-
+public:
+	/// Import from csv stream
+	void import_csv(std::istream &infile) {
+        std::string line;
 		auto t1 = std::chrono::high_resolution_clock::now();
         while (getline(infile,line)) {
             const char *index = nullptr;
@@ -157,17 +151,22 @@ int main(int argc, char *argv[]) {
 
 				/// Conclusion:: the cost of creating the index is payed back the first time it is used !
 
+				/// Todo: check if data is present and
 				isin_index[isin].push_front( iter);
 
 				// Save iterator first date in index.
+				// do nothing if already exist
 				date_index.emplace(t.date,iter);
 			}
         }
 		auto t2 = std::chrono::high_resolution_clock::now();
 
-        infile.close();
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 		std::cout<<"Reading data took "<< time_span.count()<<std::endl<<std::endl <<std::endl <<std::endl;
+		return ;
+	}
+	/// Orignal seach code moved into this function.
+	void find_something(){
 		//  Calculate total sum for all
 		for (auto i: isin_index) {
 			double sum = 0;
@@ -340,4 +339,25 @@ int main(int argc, char *argv[]) {
 			std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
 		}
     }
+};
+
+int main(int argc, char *argv[]) {
+	(void) argc;
+	(void) argv;
+
+	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
+
+    if (infile.is_open()) {
+        std::string line;
+		//read and ignore first line
+		if(	! getline(infile,line) ){
+			std::cout << "Error reading headers"<< std::endl;
+			exit (-1);
+		}
+		Ledger avanza;
+		avanza.import_csv(infile);
+	    infile.close();
+		avanza.find_something();
+
+	}
 }
