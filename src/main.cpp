@@ -303,12 +303,23 @@ Ledger avanza;
 
 using boost::asio::ip::tcp;
 
-std::string make_daytime_string()
-{
-  using namespace std; // For time_t, time and ctime;
-  time_t now = time(0);
-  return ctime(&now);
-}
+class network_connection{
+public:
+	tcp::iostream stream;
+	int handle_request(){
+	  std::string buf;
+	  std::getline(stream, buf );
+	  std::string_view request = buf;
+
+	  request.remove_suffix(1);
+	  if (request == "EXIT" ) {
+		  exit(0);
+	  }
+	  auto ans = avanza.sum_string(buf);
+      stream << ans.amount<< std::endl;
+	  return 0;
+	};
+};
 
 int network_me()
 {
@@ -321,18 +332,12 @@ int network_me()
 
     for (;;)
     {
-      tcp::iostream stream;
-      acceptor.accept(*stream.rdbuf());
-	  std::string buf;
-	  std::getline(stream, buf );
-	  std::string_view request = buf;
+      network_connection n;
+      acceptor.accept(*n.stream.rdbuf());
+	  n.handle_request();
 
-	  request.remove_suffix(1);
-	  if (request == "EXIT" ) {
-		  return 0;
-	  }
-	  auto ans = avanza.sum_string(buf);
-      stream << ans.amount<< std::endl; 
+
+
     }
   }
   catch (std::exception& e)
