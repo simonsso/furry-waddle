@@ -90,20 +90,23 @@ double parse_number(std::string_view s){
 	return (signbit? -(double) decimals : (double) decimals);;
 }
 
-
-
-
+#include <mutex>  // For std::unique_lock
+#include <shared_mutex>
 class Ledger{
 		/// Transactions can be added to ledger but never removed. Iterators will be valid
 		std::deque<transaction> ledger;
 	 	std::map<std::string,std::list<decltype(ledger.end())>> isin_index;
 		std::map<unsigned int,decltype(ledger.end())> date_index;
+		mutable std::shared_mutex mutex;
 
 public:
 	/// Import from csv stream
 	void import_csv(std::istream &infile) {
+		std::unique_lock lock(mutex);
         std::string line;
 		auto t1 = std::chrono::high_resolution_clock::now();
+		bool pushing_data = ledger.empty();
+		std::list<transaction> que;
         while (getline(infile,line)) {
             const char *index = nullptr;
             index = line.c_str();
@@ -140,26 +143,38 @@ public:
 				t.sec_name = line.substr(field_index[2], field_index[3]-field_index[2]-1);
 				t.courtage = parse_number(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
 
-				auto iter = ledger.insert(ledger.end(), t) ;
 
-				/// create an index with isin
-				/// TOTAL execution time - two iterations
-				/// =====================================
-				/// With create of index: Reading data took 0.00309825
-				/// Without               Reading data took 0.00277055
-                ///                                         0.0003277
-				/// Using index:
-				/// Gathering data took 1.0169e-05
-				/// fetching data took 0.000367927
+				if (pushing_data) {
+					auto iter = ledger.insert(ledger.end(), t) ;
 
-				/// Conclusion:: the cost of creating the index is payed back the first time it is used !
+					/// create an index with isin
+					/// TOTAL execution time - two iterations
+					/// =====================================
+					/// With create of index: Reading data took 0.00309825
+					/// Without               Reading data took 0.00277055
+					///                                         0.0003277
+					/// Using index:
+					/// Gathering data took 1.0169e-05
+					/// fetching data took 0.000367927
 
-				/// Todo: check if data is present and
-				isin_index[isin].push_front( iter);
+					/// Conclusion:: the cost of creating the index is payed back the first time it is used !
 
-				// Save iterator first date in index.
-				// do nothing if already exist
-				date_index.emplace(t.date,iter);
+					/// Todo: check if data is present and
+					isin_index[isin].push_front( iter);
+
+					// Save iterator first date in index.
+					// do nothing if already exist
+					date_index.emplace(t.date,iter);
+				} else {
+					// Todo overload equal operator..
+					if (t.isin == ledger[0].isin && t.date == ledger[0].date && t.amount == ledger[0].amount  ) {
+						for ( auto item = que.rbegin(); item != que.rend() ; ++item ){
+							ledger.push_front(*item);
+							// isin iterator = ledger.begin();
+						}
+					}
+					que.push_front(t);
+				}
 			}
         }
 		auto t2 = std::chrono::high_resolution_clock::now();
@@ -169,6 +184,7 @@ public:
 		return ;
 	}
 	transaction sum (const std::vector<std::string>& isin ){
+		std::shared_lock lock(mutex);
 		double courtage = 0;
 		double amount = 0;
 		transaction t;
@@ -196,6 +212,7 @@ public:
 		double courtage = 0;
 		double amount = 0;
 		transaction t;
+		std::shared_lock lock(mutex);
 		auto t1 = std::chrono::high_resolution_clock::now();
 		auto s = isin.substr(0, 12);
 
@@ -215,6 +232,7 @@ public:
 		return t;
 	}
 	double april(int startdate,int stopdate) {
+		std::shared_lock lock(mutex);
 		auto t1 = std::chrono::high_resolution_clock::now();
 
 		decltype(date_index.begin()) b = date_index.lower_bound(startdate);
@@ -235,6 +253,7 @@ public:
 
 	/// Orignal seach code moved into this function.
 	void find_something(){
+		std::shared_lock lock(mutex);
 		//  Calculate total sum for all
 		for (auto i: isin_index) {
 			double sum = 0;
