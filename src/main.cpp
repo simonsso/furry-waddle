@@ -332,12 +332,10 @@ int network_me()
 
     for (;;)
     {
-      network_connection n;
-      acceptor.accept(*n.stream.rdbuf());
-	  n.handle_request();
-
-
-
+		network_connection n;
+		acceptor.accept(*n.stream.rdbuf());
+		std::thread t(std::bind(&network_connection::handle_request, std::ref(n)));
+		t.join();
     }
   }
   catch (std::exception& e)
