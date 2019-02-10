@@ -309,8 +309,8 @@ public:
 };
 int handle_request(network_connection *n){
 	void *p = n->stream.rdbuf();
-	std::cout<< "Hello I am              "<< &n->stream  << " : "<< p <<std::endl;
-	n->stream << "Hello: I am "<< &n->stream <<" : "<< p <<std::endl;
+	// std::cout<< "Hello I am              "<< &n->stream  << " : "<< p <<std::endl;
+	// n->stream << "Hello: I am "<< &n->stream <<" : "<< p <<std::endl;
 	
 	while (n->stream) {
 		std::string buf;
@@ -341,7 +341,7 @@ int handle_request(network_connection *n){
 			n->stream << "Request size too short "<<buf.size() << std::endl;
 		}
 	}
-	std::cout<< "Closing connection      "<< &n->stream  << " : "<< p <<std::endl;
+	// std::cout<< "Closing connection      "<< &n->stream  << " : "<< p <<std::endl;
 	n->stream.close();
 	delete n;
 	return 0;
@@ -360,15 +360,16 @@ int network_me()
     for (;;)
     {
 		network_connection *n = new network_connection();
-		void *p = n->stream.rdbuf();
-		std::cout<< "Next connection goes to "<< &n->stream  << " : "<< p <<std::endl;
+		// void *p = n->stream.rdbuf();
+		// std::cout<< "Next connection goes to "<< &n->stream  << " : "<< p <<std::endl;
 		boost::system::error_code  ec;
 		acceptor.accept(*(*n).stream.rdbuf(),&ec);
 		if (ec){
 			std::cerr <<"Inner error "<< ec <<" "<<ec.message()<< std::endl;
 			delete n;
 		}else{
-			std::cout<< "Connected, starting thr "<< &n->stream  << " : "<< p <<std::endl;
+			// std::cout<< "Connected, starting thr "<< &n->stream  << " : "<< p <<std::endl;
+			// Give n to thread in separeate object to use and delete
 			std::thread t(std::bind(handle_request, n));
 			t.detach();
 		}
