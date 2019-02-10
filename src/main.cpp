@@ -245,14 +245,14 @@ public:
 		auto t1 = std::chrono::high_resolution_clock::now();
 
 		int limit = isin.size();
-		for(int offset = 0; offset+12 <=limit ; offset +=12 ) {
+		for(int offset = 0; offset+12 <=limit ; offset +=12 ){
 			auto s = isin.substr(offset, 12 );
 			for(auto j : isin_index[s] ){
 				t.amount += j->amount;
 				t.courtage += j->courtage;
 				++t.num_trans;
 			}
-			if ( offset+13 < limit && isin[offset+12] == ';' ){
+			if( offset+13 < limit && isin[offset+12] == ';' ){
 				++offset;
 			}
 		}
@@ -282,7 +282,7 @@ public:
 		std::cout<< sum <<" Courtage payed in April" <<std::endl;
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 		std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
-	return sum;
+		return sum;
 	}
 
 	/// Orignal seach code moved into this function.
@@ -290,12 +290,12 @@ public:
 		std::shared_lock lock(mutex);
 		//  Calculate total sum for all
 
-		for (auto i: isin_index) {
+		for(auto i: isin_index){
 			double sum = 0;
 			auto t1 = std::chrono::high_resolution_clock::now();
 			// i.second is a list of all tranactions with one security in same order
 			// as found on ledger - which was sorted.
-			for(auto j: i.second) {
+			for(auto j: i.second){
 				sum += j->amount;
 			}
 			auto t2 = std::chrono::high_resolution_clock::now();
@@ -306,7 +306,7 @@ public:
 		{
 			// Inside Asia --> Inside Australia: SE0004751337 SE0004113926
 			double sum = 0;
-			for (auto s : {"SE0004751337","SE0004113926"}){
+			for(auto s : {"SE0004751337","SE0004113926"}) {
 				for(auto j : isin_index[s] ){
 					sum += j->amount;
 				}
@@ -315,7 +315,7 @@ public:
 		}
 		// fpc: SE0000422107 SE0008374250
 		double sum = 0;
-		for (auto s : {"SE0000422107","SE0008374250"}){
+		for(auto s : {"SE0000422107","SE0008374250"}){
 			for(auto j : isin_index[s] ){
 				sum += j->amount;
 			}
@@ -324,7 +324,7 @@ public:
 		// adv: SE0009888803 SE0012116267 SE0006219473
 
 		sum = 0;
-		for (auto s : {"SE0009888803","SE0012116267","SE0006219473"}){
+		for(auto s : {"SE0009888803","SE0012116267","SE0006219473"}){
 			for(auto j : isin_index[s] ){
 				sum += j->amount;
 			}
@@ -343,14 +343,14 @@ public:
 };
 void handle_request(network_connection *n){
 	// check if strem is open
-	while (n->stream) {
+	while(n->stream){
 		std::string buf;
 		n->stream >> buf;
 
 		std::string_view request = buf;
 		// if stream was closed while waiting for imput buf will be empty
 		// break out of loop and free resources
-		if (buf == "" ) {
+		if(buf == "" ){
 			// empty lines will not endup here they are filterd out in stream >> operation
 			if (n->stream.error() ){
 				// std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
@@ -359,19 +359,19 @@ void handle_request(network_connection *n){
 		}
 		// TODO This is a sytem shutdown command,
 		// Change this to do an organized shutdown
-		if (request.substr(0, 4) == "EXIT" ) {
+		if(request.substr(0, 4) == "EXIT"){
 			n->stream << "Good Night ByeBye"<<std::endl;
 			n->stream.close();
 			delete n;
 			exit(0);
 		}
 		// A single dot to end this connection
-		if (request[0] == '.' ) {
+		if(request[0] == '.'){
 			n->stream << "ByeBye"<<std::endl;
 			break;
 		}
 
-		if( buf.size() >=12 ){
+		if(buf.size() >=12){
 			auto ans = avanza.sum_string(buf);
 			n->stream << ans.to_json()<< std::endl;
 		}else{
@@ -384,35 +384,31 @@ void handle_request(network_connection *n){
 	return;
 };
 
-int network_me()
-{
-  try
-  {
-    boost::asio::io_service io_service;
+int network_me(){
+	try{
+		boost::asio::io_service io_service;
 
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v6(), 9000);
-    boost::asio::ip::tcp::acceptor acceptor(io_service, endpoint);
-	std::list<network_connection *> connections;
-    for (;;)
-    {
-		network_connection *n = new network_connection();
-		boost::system::error_code  ec;
-		acceptor.accept(*(*n).stream.rdbuf(),&ec);
-		if (ec){
-			std::cerr <<"Inner error "<< ec <<" "<<ec.message()<< std::endl;
-			delete n;
-		}else{
-			// Give n to thread in separeate object to use and delete
-			std::thread t(std::bind(handle_request, n));
-			t.detach();
+		boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v6(), 9000);
+		boost::asio::ip::tcp::acceptor acceptor(io_service, endpoint);
+		std::list<network_connection *> connections;
+		while(1){
+			network_connection *n = new network_connection();
+			boost::system::error_code  ec;
+			acceptor.accept(*(*n).stream.rdbuf(),&ec);
+			if(ec){
+				std::cerr <<"Inner error "<< ec <<" "<<ec.message()<< std::endl;
+				delete n;
+			}else{
+				// Give n to thread in separeate object to use and delete
+				std::thread t(std::bind(handle_request, n));
+				t.detach();
+			}
 		}
-    }
-  }
-  catch (std::exception& e) {
-    std::cerr << "Outer error "<< e.what() << std::endl;
-  }
-
-  return 0;
+	}
+	catch (std::exception& e) {
+		std::cerr << "Outer error "<< e.what() << std::endl;
+	}
+	return 0;
 }
 
 
@@ -424,10 +420,10 @@ int main(int argc, char *argv[]) {
 
 	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
 
-    if (infile.is_open()) {
+    if(infile.is_open()) {
         std::string line;
 		//read and ignore first line
-		if(	! getline(infile,line) ){
+		if(!getline(infile,line) ){
 			std::cout << "Error reading headers"<< std::endl;
 			exit (-1);
 		}
@@ -441,6 +437,5 @@ int main(int argc, char *argv[]) {
 
 	avanza.sum( {});
 	t1.join();
-
 }
 
