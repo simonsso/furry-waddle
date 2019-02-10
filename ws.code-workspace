@@ -82,7 +82,8 @@
 			"mutex": "cpp",
 			"ratio": "cpp",
 			"stack": "cpp",
-			"string": "cpp"
+			"string": "cpp",
+			"thread": "cpp"
 		}
 	}
 }

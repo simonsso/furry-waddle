@@ -13,7 +13,7 @@
 #include <chrono>
 
 #include <boost/asio.hpp>
-
+#include <utility>
 class transaction{
 	public:
 /// Field names from data set
@@ -306,17 +306,29 @@ using boost::asio::ip::tcp;
 class network_connection{
 public:
 	tcp::iostream stream;
+
 	int handle_request(){
 	  std::string buf;
-	  std::getline(stream, buf );
-	  std::string_view request = buf;
+	  while (1) {
+		std::getline(stream, buf );
+		std::string_view request = buf;
 
-	  request.remove_suffix(1);
-	  if (request == "EXIT" ) {
-		  exit(0);
+		request.remove_suffix(1);
+		if (request == "EXIT" ) {
+			stream << "Good Night ByeBye"<<std::endl;
+			exit(0);
+		}
+		if (request[0] == '.' ) {
+			stream << "ByeBye"<<std::endl;
+			return 0;
+		}
+		if (request == "" ) {
+			std::cout<< "ByeBye Empty request:"<<std::endl;
+			return 0;
+		}
+		auto ans = avanza.sum_string(buf);
+		stream << ans.amount<< std::endl;
 	  }
-	  auto ans = avanza.sum_string(buf);
-      stream << ans.amount<< std::endl;
 	  return 0;
 	};
 };
@@ -329,13 +341,24 @@ int network_me()
 
     tcp::endpoint endpoint(tcp::v4(), 9000);
     tcp::acceptor acceptor(io_service, endpoint);
-
+	std::list<std::thread> threads;
+	std::list<network_connection *> connections;
     for (;;)
     {
-		network_connection n;
-		acceptor.accept(*n.stream.rdbuf());
+		network_connection *n = new network_connection();
+		acceptor.accept(*(*n).stream.rdbuf());
 		std::thread t(std::bind(&network_connection::handle_request, std::ref(n)));
-		t.join();
+		
+		threads.emplace_back(     std::move(t) );
+		connections.emplace_back( std::move(n) );
+
+		// for(network_connection& i = connections.begin(); i!=connections.end(); ++i ){
+		// 	if(i->running == 0){
+		// 		std::cout<< "Joining Thread\n";
+		// 		i->t.join();
+		// 		connections.erase(i);
+		// 	}
+		// }
     }
   }
   catch (std::exception& e)
