@@ -36,6 +36,12 @@ class transaction{
 	double courtage;
 	uint32_t date;
 };
+class transaction_set{
+public:
+	double amount;
+	double courtage;
+	int num_trans;
+};
 // ISO date to decimal encoded date
 unsigned int parse_date(std::string_view s){
 	if (s.size() != 10) {return 0;};
@@ -183,27 +189,28 @@ public:
 		std::cout<<"Reading data took "<< time_span.count()<<std::endl<<std::endl <<std::endl <<std::endl;
 		return ;
 	}
-	transaction sum (const std::vector<std::string>& isin ){
+	transaction_set sum (const std::vector<std::string>& isin ){
 		std::shared_lock lock(mutex);
-		double courtage = 0;
-		double amount = 0;
-		transaction t;
+		transaction_set t;
+		t.courtage = 0;
+		t.amount = 0;
+		t.num_trans = 0;
+
 		auto t1 = std::chrono::high_resolution_clock::now();
 
 		for (auto s : isin ){
 			for(auto j : isin_index[s] ){
-				amount += j->amount;
-				courtage += j->courtage;
+				t.amount += j->amount;
+				t.courtage += j->courtage;
+				++t.num_trans;
 			}
 		};
 		auto t2 = std::chrono::high_resolution_clock::now();
 
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 		std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
-		std::cout << "Transgalactic Sum: "<< amount <<std::endl ;
+		std::cout << "Transgalactic Sum: "<< t.amount << " transcations "<<t.num_trans<<std::endl ;
 
-		t.amount = amount;
-		t.courtage = courtage;
 		return t;
 	}
 
@@ -214,11 +221,17 @@ public:
 		transaction t;
 		std::shared_lock lock(mutex);
 		auto t1 = std::chrono::high_resolution_clock::now();
-		auto s = isin.substr(0, 12);
-
-		for(auto j : isin_index[s] ){
-			amount += j->amount;
-			courtage += j->courtage;
+		
+		int limit = isin.size();
+		for(int offset = 0; offset+12 <=limit ; offset +=12 ) {
+			auto s = isin.substr(offset, 12 );
+			for(auto j : isin_index[s] ){
+				amount += j->amount;
+				courtage += j->courtage;
+			}
+			if ( offset+13 < limit && isin[offset+12] == ';' ){
+				++offset; 
+			}
 		}
 
 		auto t2 = std::chrono::high_resolution_clock::now();
@@ -255,6 +268,7 @@ public:
 	void find_something(){
 		std::shared_lock lock(mutex);
 		//  Calculate total sum for all
+
 		for (auto i: isin_index) {
 			double sum = 0;
 			auto t1 = std::chrono::high_resolution_clock::now();
@@ -308,11 +322,21 @@ public:
 	tcp::iostream stream;
 };
 void handle_request(network_connection *n){
+	// check if strem is open 
 	while (n->stream) {
 		std::string buf;
 		n->stream >> buf;
+		
 		std::string_view request = buf;
-
+		// if stream was closed while waiting for imput buf will be empty
+		// break out of loop and free resources
+		if (buf == "" ) {
+			// empty lines will not endup here they are filterd out in stream >> operation 
+			if (n->stream.error() ){
+				// std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
+				break;
+			}
+		}
 		// TODO This is a sytem shutdown command,
 		// Change this to do an organized shutdown
 		if (request.substr(0, 4) == "EXIT" ) {
@@ -321,18 +345,12 @@ void handle_request(network_connection *n){
 			delete n;
 			exit(0);
 		}
-		// End this connection
+		// A single dot to end this connection
 		if (request[0] == '.' ) {
 			n->stream << "ByeBye"<<std::endl;
 			break;
 		}
-		if (request == "" ) {
-			std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
-			//return 0;
-			if (n->stream.error() ){
-				break;
-			}
-		}
+
 		if( buf.size() >=12 ){
 			auto ans = avanza.sum_string(buf);
 			n->stream << ans.amount<< std::endl;
@@ -353,7 +371,7 @@ int network_me()
   {
     boost::asio::io_service io_service;
 
-    tcp::endpoint endpoint(tcp::v4(), 9000);
+    tcp::endpoint endpoint(tcp::v6(), 9000);
     tcp::acceptor acceptor(io_service, endpoint);
 	std::list<network_connection *> connections;
     for (;;)
