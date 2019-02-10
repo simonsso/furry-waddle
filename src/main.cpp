@@ -1,19 +1,27 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <string_view>
+
 #include <map>
 #include <vector>
 #include <list>
-#include <string_view>
-#include <cmath>
 #include <deque>
+
+#include <chrono>
+#include <utility>
+#include <cmath>
+
 #include <thread>
+#include <mutex>  // For std::unique_lock
+#include <shared_mutex>
 
 #include <sys/socket.h>
-#include <chrono>
-
 #include <boost/asio.hpp>
-#include <utility>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+
 class transaction{
 	public:
 /// Field names from data set
@@ -36,11 +44,24 @@ class transaction{
 	double courtage;
 	uint32_t date;
 };
+
+
+
 class transaction_set{
 public:
 	double amount;
 	double courtage;
 	int num_trans;
+	std::string to_json(){
+		boost::property_tree::ptree pt;
+		pt.put ("isin.amount", amount);
+		pt.put ("isin.courtage", courtage);
+		pt.put ("isin.num", num_trans);
+
+		std::ostringstream buf;
+		boost::property_tree::write_json(buf, pt, false);
+		return buf.str();
+	};
 };
 // ISO date to decimal encoded date
 unsigned int parse_date(std::string_view s){
@@ -96,8 +117,7 @@ double parse_number(std::string_view s){
 	return (signbit? -(double) decimals : (double) decimals);;
 }
 
-#include <mutex>  // For std::unique_lock
-#include <shared_mutex>
+
 class Ledger{
 		/// Transactions can be added to ledger but never removed. Iterators will be valid
 		std::deque<transaction> ledger;
@@ -127,7 +147,7 @@ public:
 			// Check if expected numer of fields is found
 			if (field_index.size() == 9 ){
 				// This is the expected fields
-				// 	{ 
+				// 	{
 				//   0"Datum" : "2016-05-26",
 				//   0-1"Konto" : "ISK",
 				//   1-2"Typ av transaktion" : "Split",
@@ -215,22 +235,25 @@ public:
 	}
 
 
-	transaction sum_string (const std::string & isin ){
-		double courtage = 0;
-		double amount = 0;
-		transaction t;
+	transaction_set sum_string (const std::string & isin ){
+		transaction_set t;
+		t.courtage = 0;
+		t.amount = 0;
+		t.num_trans = 0;
+
 		std::shared_lock lock(mutex);
 		auto t1 = std::chrono::high_resolution_clock::now();
-		
+
 		int limit = isin.size();
 		for(int offset = 0; offset+12 <=limit ; offset +=12 ) {
 			auto s = isin.substr(offset, 12 );
 			for(auto j : isin_index[s] ){
-				amount += j->amount;
-				courtage += j->courtage;
+				t.amount += j->amount;
+				t.courtage += j->courtage;
+				++t.num_trans;
 			}
 			if ( offset+13 < limit && isin[offset+12] == ';' ){
-				++offset; 
+				++offset;
 			}
 		}
 
@@ -238,10 +261,8 @@ public:
 
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 		std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
-		std::cout << "Transgalactic Sum: "<< amount <<std::endl ;
+		std::cout << "Transgalactic Sum: "<< t.amount <<std::endl ;
 
-		t.amount = amount;
-		t.courtage = courtage;
 		return t;
 	}
 	double april(int startdate,int stopdate) {
@@ -281,7 +302,7 @@ public:
 
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout << i.first<<" Sum: "<<sum <<"    Gathering data took "<< time_span.count()<<std::endl;
-		}		
+		}
 		{
 			// Inside Asia --> Inside Australia: SE0004751337 SE0004113926
 			double sum = 0;
@@ -315,23 +336,22 @@ public:
 Ledger avanza;
 
 
-using boost::asio::ip::tcp;
 
 class network_connection{
 public:
-	tcp::iostream stream;
+	boost::asio::ip::tcp::iostream stream;
 };
 void handle_request(network_connection *n){
-	// check if strem is open 
+	// check if strem is open
 	while (n->stream) {
 		std::string buf;
 		n->stream >> buf;
-		
+
 		std::string_view request = buf;
 		// if stream was closed while waiting for imput buf will be empty
 		// break out of loop and free resources
 		if (buf == "" ) {
-			// empty lines will not endup here they are filterd out in stream >> operation 
+			// empty lines will not endup here they are filterd out in stream >> operation
 			if (n->stream.error() ){
 				// std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
 				break;
@@ -353,7 +373,7 @@ void handle_request(network_connection *n){
 
 		if( buf.size() >=12 ){
 			auto ans = avanza.sum_string(buf);
-			n->stream << ans.amount<< std::endl;
+			n->stream << ans.to_json()<< std::endl;
 		}else{
 			n->stream << "Request size too short "<<buf.size() << std::endl;
 		}
@@ -364,15 +384,14 @@ void handle_request(network_connection *n){
 	return;
 };
 
-
 int network_me()
 {
   try
   {
     boost::asio::io_service io_service;
 
-    tcp::endpoint endpoint(tcp::v6(), 9000);
-    tcp::acceptor acceptor(io_service, endpoint);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v6(), 9000);
+    boost::asio::ip::tcp::acceptor acceptor(io_service, endpoint);
 	std::list<network_connection *> connections;
     for (;;)
     {
