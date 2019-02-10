@@ -306,32 +306,47 @@ using boost::asio::ip::tcp;
 class network_connection{
 public:
 	tcp::iostream stream;
-
-	int handle_request(){
-	  std::string buf;
-	  while (1) {
-		std::getline(stream, buf );
+};
+int handle_request(network_connection *n){
+	void *p = n->stream.rdbuf();
+	std::cout<< "Hello I am              "<< &n->stream  << " : "<< p <<std::endl;
+	n->stream << "Hello: I am "<< &n->stream <<" : "<< p <<std::endl;
+	
+	while (n->stream) {
+		std::string buf;
+		n->stream >> buf;
 		std::string_view request = buf;
 
-		request.remove_suffix(1);
-		if (request == "EXIT" ) {
-			stream << "Good Night ByeBye"<<std::endl;
+		if (request.substr(0, 4) == "EXIT" ) {
+			n->stream << "Good Night ByeBye"<<std::endl;
+			n->stream.close();
+			delete n;
 			exit(0);
 		}
 		if (request[0] == '.' ) {
-			stream << "ByeBye"<<std::endl;
-			return 0;
+			n->stream << "ByeBye"<<std::endl;
+			break;
 		}
 		if (request == "" ) {
-			std::cout<< "ByeBye Empty request:"<<std::endl;
-			return 0;
+			std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
+			//return 0;
+			if (n->stream.error() ){
+				break;
+			}
 		}
-		auto ans = avanza.sum_string(buf);
-		stream << ans.amount<< std::endl;
-	  }
-	  return 0;
-	};
+		if( buf.size() >=12 ){
+			auto ans = avanza.sum_string(buf);
+			n->stream << ans.amount<< std::endl;
+		}else{
+			n->stream << "Request size too short "<<buf.size() << std::endl;
+		}
+	}
+	std::cout<< "Closing connection      "<< &n->stream  << " : "<< p <<std::endl;
+	n->stream.close();
+	delete n;
+	return 0;
 };
+
 
 int network_me()
 {
@@ -341,28 +356,25 @@ int network_me()
 
     tcp::endpoint endpoint(tcp::v4(), 9000);
     tcp::acceptor acceptor(io_service, endpoint);
-	std::list<std::thread> threads;
 	std::list<network_connection *> connections;
     for (;;)
     {
 		network_connection *n = new network_connection();
-		acceptor.accept(*(*n).stream.rdbuf());
-		std::thread t(std::bind(&network_connection::handle_request, std::ref(n)));
-		
-		threads.emplace_back(     std::move(t) );
-		connections.emplace_back( std::move(n) );
-
-		// for(network_connection& i = connections.begin(); i!=connections.end(); ++i ){
-		// 	if(i->running == 0){
-		// 		std::cout<< "Joining Thread\n";
-		// 		i->t.join();
-		// 		connections.erase(i);
-		// 	}
-		// }
+		void *p = n->stream.rdbuf();
+		std::cout<< "Next connection goes to "<< &n->stream  << " : "<< p <<std::endl;
+		boost::system::error_code  ec;
+		acceptor.accept(*(*n).stream.rdbuf(),&ec);
+		if (ec){
+			std::cerr <<"Inner error "<< ec <<" "<<ec.message()<< std::endl;
+			delete n;
+		}else{
+			std::cout<< "Connected, starting thr "<< &n->stream  << " : "<< p <<std::endl;
+			std::thread t(std::bind(handle_request, n));
+			t.detach();
+		}
     }
   }
-  catch (std::exception& e)
-  {
+  catch (std::exception& e) {
     std::cerr << e.what() << std::endl;
   }
 
