@@ -341,48 +341,6 @@ class network_connection{
 public:
 	boost::asio::ip::tcp::iostream stream;
 };
-void handle_request(network_connection *n){
-	// check if strem is open
-	while(n->stream){
-		std::string buf;
-		n->stream >> buf;
-
-		std::string_view request = buf;
-		// if stream was closed while waiting for imput buf will be empty
-		// break out of loop and free resources
-		if(buf == "" ){
-			// empty lines will not endup here they are filterd out in stream >> operation
-			if (n->stream.error() ){
-				// std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
-				break;
-			}
-		}
-		// TODO This is a sytem shutdown command,
-		// Change this to do an organized shutdown
-		if(request.substr(0, 4) == "EXIT"){
-			n->stream << "Good Night ByeBye"<<std::endl;
-			n->stream.close();
-			delete n;
-			exit(0);
-		}
-		// A single dot to end this connection
-		if(request[0] == '.'){
-			n->stream << "ByeBye"<<std::endl;
-			break;
-		}
-
-		if(buf.size() >=12){
-			auto ans = avanza.sum_string(buf);
-			n->stream << ans.to_json()<< std::endl;
-		}else{
-			n->stream << "Request size too short "<<buf.size() << std::endl;
-		}
-	}
-	std::cout<< "Closing connection      "<< &n->stream  << " : " <<std::endl;
-	n->stream.close();
-	delete n;
-	return;
-};
 
 int network_me(){
 	try{
@@ -400,7 +358,48 @@ int network_me(){
 				delete n;
 			}else{
 				// Give n to thread in separeate object to use and delete
-				std::thread t(std::bind(handle_request, n));
+				std::thread t([](network_connection *n) -> void {
+					// check if strem is open
+					while(n->stream){
+						std::string buf;
+						n->stream >> buf;
+
+						std::string_view request = buf;
+						// if stream was closed while waiting for imput buf will be empty
+						// break out of loop and free resources
+						if(buf == "" ){
+							// empty lines will not endup here they are filterd out in stream >> operation
+							if (n->stream.error() ){
+								// std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
+								break;
+							}
+						}
+						// TODO This is a sytem shutdown command,
+						// Change this to do an organized shutdown
+						if(request.substr(0, 4) == "EXIT"){
+							n->stream << "Good Night ByeBye"<<std::endl;
+							n->stream.close();
+							delete n;
+							exit(0);
+						}
+						// A single dot to end this connection
+						if(request[0] == '.'){
+							n->stream << "ByeBye"<<std::endl;
+							break;
+						}
+
+						if(buf.size() >=12){
+							auto ans = avanza.sum_string(buf);
+							n->stream << ans.to_json()<< std::endl;
+						}else{
+							n->stream << "Request size too short "<<buf.size() << std::endl;
+						}
+					}
+					std::cout<< "Closing connection      "<< &n->stream  << " : " <<std::endl;
+					n->stream.close();
+					delete n;
+					return;
+				} ,n );
 				t.detach();
 			}
 		}
