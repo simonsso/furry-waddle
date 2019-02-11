@@ -1,5 +1,4 @@
 # Furry-waddle
-
 This will parse output from Swedish net stock broker Avanza and perform basic filtering on ISIN create reports.
 
 But mostly I use it to show how the data structure and implementation impacts execution times.
@@ -17,3 +16,7 @@ But mostly I use it to show how the data structure and implementation impacts ex
   - sum based on time.
 - Network interface and multi threading
   - Each incoming connection is handled in separate thread
+
+
+## CI: Travis build status
+[![Build Status](https://travis-ci.org/simonsso/furry-waddle.svg?branch=master)](https://travis-ci.org/simonsso/furry-waddle)
