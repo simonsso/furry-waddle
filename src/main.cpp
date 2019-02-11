@@ -44,12 +44,7 @@ class transaction{
 	double courtage;
 	uint32_t date;
 	bool operator== (transaction &t){
-		return (t.isin ==   isin &&
-		        t.date ==   date &&
-				t.amount == amount &&
-				t.curenecy == curenecy &&
-				t.sec_name == sec_name &&
-				t.courtage== courtage );
+		return (t.courtage== courtage && t.isin ==  isin &&  t.date == date && t.amount == amount && t.curenecy == curenecy && t.sec_name == sec_name );
 	}
 };
 
@@ -397,13 +392,13 @@ int network_me(){
 				std::thread t([](network_connection *n) -> void {
 					// check if strem is open
 					while(n->stream){
-						std::string buf;
-						n->stream >> buf;
+						std::string command;
+						n->stream >> command;
 
-						std::string_view request = buf;
-						// if stream was closed while waiting for imput buf will be empty
+						std::string_view request = command;
+						// if stream was closed while waiting for imput command will be empty
 						// break out of loop and free resources
-						if(buf == "" ){
+						if(command == "" ){
 							// empty lines will not endup here they are filterd out in stream >> operation
 							if (n->stream.error() ){
 								// std::cout<< "Empty request:"<< n->stream.error().message() <<std::endl;
@@ -424,11 +419,11 @@ int network_me(){
 							break;
 						}
 
-						if(buf.size() >=12){
-							auto ans = avanza.sum_string(buf);
+						if(command.size() >=12){
+							auto ans = avanza.sum_string(command);
 							n->stream << ans.to_json()<< std::endl;
 						}else{
-							n->stream << "Request size too short "<<buf.size() << std::endl;
+							n->stream << "Request size too short "<<command.size() << std::endl;
 						}
 					}
 					std::cout<< "Closing connection      "<< &n->stream  << " : " <<std::endl;
