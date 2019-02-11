@@ -267,7 +267,7 @@ public:
 	}
 
 
-	transaction_set sum_string (const std::string & isin ){
+	transaction_set sum_string (const std::string & isin , uint32_t startdate=0 ,uint32_t stopdate=30000000){
 		transaction_set t;
 		t.courtage = 0;
 		t.amount = 0;
@@ -280,9 +280,11 @@ public:
 		for(int offset = 0; offset+12 <=limit ; offset +=12 ){
 			auto s = isin.substr(offset, 12 );
 			for(auto j : isin_index[s] ){
+				if (j->date >= startdate && j->date < stopdate){
 				t.amount += j->amount;
 				t.courtage += j->courtage;
 				++t.num_trans;
+			}
 			}
 			if( offset+13 < limit && isin[offset+12] == ';' ){
 				++offset;
@@ -419,6 +421,28 @@ int network_me(){
 							break;
 						}
 
+						// Command = Interval date date ISIN[[;]ISIN]*
+						if(command == "sum" ){
+								uint32_t startdate=0;
+								uint32_t stopdate = 30000000; // now + some time
+								std::string subcommand;
+								n->stream >> subcommand;
+								if (subcommand == "from" ){
+									n->stream >> startdate;
+									n->stream >> subcommand;
+								}
+								if (subcommand == "to" ){
+									n->stream >> stopdate;
+									n->stream >> subcommand;
+								}
+								if(subcommand.size() >=12){
+									auto ans = avanza.sum_string(subcommand,startdate,stopdate);
+									n->stream << ans.to_json()<< std::endl;
+								}else{
+									n->stream << "Request size too short "<<subcommand.size() << std::endl;
+								}
+						} else
+						// Command - Sum ISIN[[;]ISIN]*
 						if(command.size() >=12){
 							auto ans = avanza.sum_string(command);
 							n->stream << ans.to_json()<< std::endl;
