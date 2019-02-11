@@ -23,4 +23,5 @@ run: all
 	./$(BIN)/$(EXECUTABLE)
 
 $(BIN)/$(EXECUTABLE): $(SRC)/*
+	install -d $(BIN)
 	$(CC) $(C_FLAGS) $(D_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)

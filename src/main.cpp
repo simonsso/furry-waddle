@@ -43,6 +43,14 @@ class transaction{
 	double amount;
 	double courtage;
 	uint32_t date;
+	bool operator== (transaction &t){
+		return (t.isin ==   isin &&
+		        t.date ==   date &&
+				t.amount == amount &&
+				t.curenecy == curenecy &&
+				t.sec_name == sec_name &&
+				t.courtage== courtage );
+	}
 };
 
 
@@ -187,7 +195,7 @@ public:
 					// Todo overload equal operator for transaction ...
 					// also last transaction could be identical if identical transaction have been done
 					// multiple times the same day.
-					if (t.isin == ledger[0].isin && t.date == ledger[0].date && t.amount == ledger[0].amount  ) {
+					if (t == ledger[0] ) {
 						for ( auto item = que.rbegin(); item != que.rend() ; ++item ){
 							ledger.push_front(*item);
 							auto iter = ledger.begin();
@@ -244,6 +252,7 @@ public:
 
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout << "Ledger is:"<< ( was_sorted?"sorted":"unsorted" )<< "  " <<time_span.count()<<std::endl;
+			status = status & was_sorted;
 		}
 		for(auto i: isin_index){
 			auto t1 = std::chrono::high_resolution_clock::now();
@@ -253,7 +262,7 @@ public:
 			bool was_sorted = std::is_sorted(i.second.begin(),i.second.end(),[&count](decltype(ledger.end()) &t1, decltype(ledger.end()) &t2){ ++count; return t1->date < t2->date;}  );
 
 			auto t2 = std::chrono::high_resolution_clock::now();
-
+			status = status & was_sorted;
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout << i.first<<" is "<< ( was_sorted?"sorted":"unsorted" ) <<" x "<< count << "  " <<time_span.count()<<std::endl;
 		}
