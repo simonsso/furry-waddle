@@ -358,12 +358,14 @@ Ledger avanza;
 
 
 
-class network_connection{
-public:
-	boost::asio::ip::tcp::iostream stream;
-};
 
 int network_me(){
+	// Encapuslate stread to saftly tranfer it to thread
+	class network_connection{
+	public:
+		boost::asio::ip::tcp::iostream stream;
+	};
+
 	try{
 		boost::asio::io_service io_service;
 
