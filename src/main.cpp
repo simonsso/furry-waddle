@@ -184,14 +184,21 @@ public:
 					// do nothing if already exist
 					date_index.emplace(t.date,iter);
 				} else {
-					// Todo overload equal operator..
+					// Todo overload equal operator for transaction ...
+					// also last transaction could be identical if identical transaction have been done
+					// multiple times the same day.
 					if (t.isin == ledger[0].isin && t.date == ledger[0].date && t.amount == ledger[0].amount  ) {
 						for ( auto item = que.rbegin(); item != que.rend() ; ++item ){
 							ledger.push_front(*item);
-							// isin iterator = ledger.begin();
+							auto iter = ledger.begin();
+							// we are now rebuilding the data in reverse order;
+							isin_index[t.isin].push_back( iter);
+							// overwrite index to save the first date - which will be called last
+							date_index[t.date] = iter;
+
 						}
 					}
-					que.push_front(t);
+					que.push_back(t);
 				}
 			}
         }
@@ -356,9 +363,6 @@ public:
 
 Ledger avanza;
 
-
-
-
 int network_me(){
 	// Encapuslate stread to saftly tranfer it to thread
 	class network_connection{
@@ -439,18 +443,34 @@ int main(int argc, char *argv[]) {
 	(void) argc;
 	(void) argv;
 	std::thread t1(	network_me );
+	{
+		std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190126.csv" );
 
-	std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
-
-    if(infile.is_open()) {
-        std::string line;
-		//read and ignore first line
-		if(!getline(infile,line) ){
-			std::cout << "Error reading headers"<< std::endl;
-			exit (-1);
+		if(infile.is_open()) {
+			std::string line;
+			//read and ignore first line
+			if(!getline(infile,line) ){
+				std::cout << "Error reading headers"<< std::endl;
+				exit (-1);
+			}
+			avanza.import_csv(infile);
+			infile.close();
 		}
-		avanza.import_csv(infile);
-	    infile.close();
+	}
+	avanza.data_integrity_self_check();
+	{
+		std::ifstream infile( "/home/simson/Documents/Avanza/transaktioner_20150210_20190201.csv" );
+
+		if(infile.is_open()) {
+			std::string line;
+			//read and ignore first line
+			if(!getline(infile,line) ){
+				std::cout << "Error reading headers"<< std::endl;
+				exit (-1);
+			}
+			avanza.import_csv(infile);
+			infile.close();
+		}
 	}
 	//avanza.find_something();
 	avanza.data_integrity_self_check();
