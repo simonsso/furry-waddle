@@ -146,19 +146,11 @@ public:
 
 			// Check if expected numer of fields is found
 			if (field_index.size() == 9 ){
-				// This is the expected fields
-				// 	{
-				//   0"Datum" : "2016-05-26",
-				//   0-1"Konto" : "ISK",
-				//   1-2"Typ av transaktion" : "Split",
-				//   2-3"Värdepapper/beskrivning" : "FING B",
-				//   3-4"Antal" : -67,
-				//   4-5"Kurs" : 297.91,
-				//   5-6"Belopp" : "-",
-				//   6-7"Courtage" : "-",
-				//   7-8"Valuta" : "SEK",
-				//   9"ISIN" : "SE0000422107"
-				//  },
+				// Example csv format. Expect first line to have been shaved off by caller:
+				// Datum;Konto;Typ av transaktion;Värdepapper/beskrivning;Antal;Kurs;Belopp;Courtage;Valuta;ISIN
+				// 2019-02-01;Depå;Insättning;Insättning;-;-;1000,00;-;SEK;-
+				// 2019-01-29;ISK;Köp;Handelsbanken B;20;105,00;-2105;5,00;SEK;SE0007100607
+
 				auto isin = line.substr(field_index[8],12) ;
 
 				transaction t;
@@ -232,6 +224,35 @@ public:
 		std::cout << "Transgalactic Sum: "<< t.amount << " transcations "<<t.num_trans<<std::endl ;
 
 		return t;
+	}
+
+	/// Verify all asumptionions on data was correct
+	bool data_integrity_self_check(){
+		std::unique_lock lock(mutex);
+		bool status = true;
+		{
+			auto t1 = std::chrono::high_resolution_clock::now();
+			bool was_sorted = std::is_sorted(ledger.begin(),ledger.end(),[](transaction &t1, transaction &t2){ return t1.date > t2.date;});
+			auto t2 = std::chrono::high_resolution_clock::now();
+
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout << "Ledger is:"<< ( was_sorted?"sorted":"unsorted" )<< "  " <<time_span.count()<<std::endl;
+		}
+		for(auto i: isin_index){
+			auto t1 = std::chrono::high_resolution_clock::now();
+			// i.second is a list of all tranactions with one security in same order
+			// as found on ledger - which was sorted.
+			int count = 0;
+			bool was_sorted = std::is_sorted(i.second.begin(),i.second.end(),[&count](decltype(ledger.end()) &t1, decltype(ledger.end()) &t2){ ++count; return t1->date < t2->date;}  );
+
+			auto t2 = std::chrono::high_resolution_clock::now();
+
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout << i.first<<" is "<< ( was_sorted?"sorted":"unsorted" ) <<" x "<< count << "  " <<time_span.count()<<std::endl;
+		}
+
+		return status;
+
 	}
 
 
@@ -430,6 +451,7 @@ int main(int argc, char *argv[]) {
 	    infile.close();
 	}
 	//avanza.find_something();
+	avanza.data_integrity_self_check();
 	avanza.sum( {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" } );
 
 	avanza.sum( {"LU0050427557"});
