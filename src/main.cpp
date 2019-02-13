@@ -120,11 +120,12 @@ double parse_number(std::string_view s){
 	return (signbit? -(double) decimals : (double) decimals);;
 }
 
+// auto comp = []( transaction* &t1, transaction* &t2){ return t1->date < t2->date;};
 
 class Ledger{
 		/// Transactions can be added to ledger but never removed. Iterators will be valid
 		std::deque<transaction> ledger;
-	 	std::map<std::string,std::list<decltype(ledger.end())>> isin_index;
+		std::map<std::string, std::list<transaction*>> isin_index;
 		std::map<unsigned int,decltype(ledger.end())> date_index;
 		mutable std::shared_mutex mutex;
 
@@ -176,12 +177,11 @@ public:
 					///                                         0.0003277
 					/// Using index:
 					/// Gathering data took 1.0169e-05
-					/// fetching data took 0.000367927
+					/// fetching data without index took 0.000367927
 
 					/// Conclusion:: the cost of creating the index is payed back the first time it is used !
 
-					/// Todo: check if data is present and
-					isin_index[isin].push_front( iter);
+					isin_index[isin].push_front( &*iter);
 
 					// Save iterator first date in index.
 					// do nothing if already exist
@@ -195,7 +195,7 @@ public:
 							ledger.push_front(*item);
 							auto iter = ledger.begin();
 							// we are now rebuilding the data in reverse order;
-							isin_index[t.isin].push_back( iter);
+							isin_index[t.isin].push_back( &*iter);
 							// overwrite index to save the first date - which will be called last
 							date_index[t.date] = iter;
 
@@ -254,7 +254,7 @@ public:
 			// i.second is a list of all tranactions with one security in same order
 			// as found on ledger - which was sorted.
 			int count = 0;
-			bool was_sorted = std::is_sorted(i.second.begin(),i.second.end(),[&count](decltype(ledger.end()) &t1, decltype(ledger.end()) &t2){ ++count; return t1->date < t2->date;}  );
+			bool was_sorted = std::is_sorted(i.second.begin(),i.second.end(),[&count](transaction * &t1, transaction * &t2){ ++count; return t1->date < t2->date;}  );
 
 			auto t2 = std::chrono::high_resolution_clock::now();
 			status = status & was_sorted;
@@ -279,12 +279,16 @@ public:
 		int limit = isin.size();
 		for(int offset = 0; offset+12 <=limit ; offset +=12 ){
 			auto s = isin.substr(offset, 12 );
+			// std::list<decltype(ledger.end())> &list = isin_index[s] ;
+
+			// auto b = std::lower_bound( list.begin(), startdate,[](decltype(ledger.end()) &t1, decltype(ledger.end()) &t2){ return t1->date < t2->date;} );
+			// auto e = std::upper_bound( b ,           stopdate, [](decltype(ledger.end()) &t1, decltype(ledger.end()) &t2){ return t1->date < t2->date;} );
 			for(auto j : isin_index[s] ){
 				if (j->date >= startdate && j->date < stopdate){
-				t.amount += j->amount;
-				t.courtage += j->courtage;
-				++t.num_trans;
-			}
+					t.amount += j->amount;
+					t.courtage += j->courtage;
+					++t.num_trans;
+				}
 			}
 			if( offset+13 < limit && isin[offset+12] == ';' ){
 				++offset;
