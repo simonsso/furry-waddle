@@ -253,13 +253,23 @@ public:
 		std::map<unsigned int,decltype(ledger.end())> new_index;
 
 		{
+			auto t1 = std::chrono::high_resolution_clock::now();
 			for (auto item = ledger.begin(); item != ledger.end(); item++ ){
 				new_index.emplace((*item).date, item);
 			}
-			// check
+			auto t2 = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout << "Recreate date index " <<time_span.count()<<std::endl;
 
+		}
+		{
+			auto t1 = std::chrono::high_resolution_clock::now();
+			// check
 			auto pair = std::mismatch( new_index.begin(), new_index.end(),date_index.begin() );
 			status = status && (pair.first  == new_index.end() &&   pair.second == date_index.end() );
+						auto t2 = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout << "Verify date index " <<time_span.count()<<std::endl;
 		}
 		return status;
 	}
