@@ -41,10 +41,10 @@ class transaction{
 	std::string curenecy;
 	std::string sec_name;
 	double amount;
-	double courtage;
+	double brokerage;
 	uint32_t date;
 	bool operator== (transaction &t){
-		return (t.courtage == courtage && t.isin ==  isin &&  t.date == date && t.amount == amount && t.curenecy == curenecy && t.sec_name == sec_name );
+		return (t.brokerage == brokerage && t.isin ==  isin &&  t.date == date && t.amount == amount && t.curenecy == curenecy && t.sec_name == sec_name );
 	}
 	bool operator< (transaction &t){
 		//	std::cout << "DBG"<< this->date <<" < " <<t.date << std::endl;
@@ -57,12 +57,12 @@ class transaction{
 class transaction_set{
 public:
 	double amount;
-	double courtage;
+	double brokerage;
 	int num_trans;
 	std::string to_json(){
 		boost::property_tree::ptree pt;
 		pt.put ("isin.amount", amount);
-		pt.put ("isin.courtage", courtage);
+		pt.put ("isin.brokerage", brokerage);
 		pt.put ("isin.num", num_trans);
 
 		std::ostringstream buf;
@@ -174,7 +174,7 @@ public:
 				t.isin = isin;
 				t.curenecy = line.substr(field_index[7], 3);
 				t.sec_name = line.substr(field_index[2], field_index[3]-field_index[2]-1);
-				t.courtage = parse_number(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
+				t.brokerage = parse_number(line.substr(field_index[6], field_index[7]-field_index[6]-1) );
 
 
 				if (pushing_data) {
@@ -223,30 +223,6 @@ public:
 		std::cout<<"Reading data took "<< time_span.count()<<std::endl<<std::endl <<std::endl <<std::endl;
 		return ;
 	}
-	transaction_set sum (const std::vector<std::string>& isin ){
-		std::shared_lock lock(mutex);
-		transaction_set t;
-		t.courtage = 0;
-		t.amount = 0;
-		t.num_trans = 0;
-
-		auto t1 = std::chrono::high_resolution_clock::now();
-
-		for (auto s : isin ){
-			for(auto j : isin_index[s] ){
-				t.amount += j->amount;
-				t.courtage += j->courtage;
-				++t.num_trans;
-			}
-		};
-		auto t2 = std::chrono::high_resolution_clock::now();
-
-		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-		std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
-		std::cout << "Transgalactic Sum: "<< t.amount << " transcations "<<t.num_trans<<std::endl ;
-
-		return t;
-	}
 
 	/// Verify all asumptionions on data was correct
 	bool data_integrity_self_check(){
@@ -278,9 +254,9 @@ public:
 	}
 
 
-	transaction_set sum_string (const std::string & isin , uint32_t startdate=0 ,uint32_t stopdate=30000000){
+	transaction_set sum (const std::string & isin , uint32_t startdate=0 ,uint32_t stopdate=30000000){
 		transaction_set t;
-		t.courtage = 0;
+		t.brokerage = 0;
 		t.amount = 0;
 		t.num_trans = 0;
 
@@ -296,7 +272,7 @@ public:
 				}
 				if (j->date >= startdate ){
 					t.amount += j->amount;
-					t.courtage += j->courtage;
+					t.brokerage += j->brokerage;
 					++t.num_trans;
 				}
 			}
@@ -313,7 +289,7 @@ public:
 
 		return t;
 	}
-	
+	//
 	double april(int startdate,int stopdate) {
 		std::shared_lock lock(mutex);
 		auto t1 = std::chrono::high_resolution_clock::now();
@@ -324,13 +300,13 @@ public:
 		double sum = 0;
 		if (b != date_index.end() ){
 			for( decltype(ledger.begin()) i = b->second ;i !=e->second ; --i){
-				sum += i->courtage;
+				sum += i->brokerage;
 			}
 		}
 		auto t2 = std::chrono::high_resolution_clock::now();
-		std::cout<< sum <<" Courtage payed in April" <<std::endl;
+		std::cout<< sum <<" brokerage payed in April" <<std::endl;
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-		std::cout<<"courtage calc took "<< time_span.count()<<std::endl;
+		std::cout<<"brokerage calc took "<< time_span.count()<<std::endl;
 		return sum;
 	}
 
@@ -451,7 +427,7 @@ int network_me(){
 									n->stream >> subcommand;
 								}
 								if(subcommand.size() >=12){
-									auto ans = avanza.sum_string(subcommand,startdate,stopdate);
+									auto ans = avanza.sum(subcommand,startdate,stopdate);
 									n->stream << ans.to_json()<< std::endl;
 								}else{
 									n->stream << "Request size too short "<<subcommand.size() << std::endl;
@@ -459,7 +435,7 @@ int network_me(){
 						} else
 						// Command - Sum ISIN[[;]ISIN]*
 						if(command.size() >=12){
-							auto ans = avanza.sum_string(command);
+							auto ans = avanza.sum(command);
 							n->stream << ans.to_json()<< std::endl;
 						}else{
 							n->stream << "Request size too short "<<command.size() << std::endl;
@@ -517,11 +493,11 @@ int main(int argc, char *argv[]) {
 	}
 	//avanza.find_something();
 	avanza.data_integrity_self_check();
-	avanza.sum( {"SE0010546390","SE0010546408","SE0010820613","SE0009382856","SE0000143521" } );
+	avanza.sum( "SE0010546390;SE0010546408;SE0010820613;SE0009382856;SE0000143521" );
 
-	avanza.sum( {"LU0050427557"});
+	avanza.sum( "LU0050427557" );
 
-	avanza.sum( {});
+	avanza.sum( "");
 	t1.join();
 }
 
