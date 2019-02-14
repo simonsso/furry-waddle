@@ -337,26 +337,27 @@ public:
 		t.courtage = 0;
 		t.amount = 0;
 		t.num_trans = 0;
-
+		transaction datelimit;
 		std::shared_lock lock(mutex);
 		auto t1 = std::chrono::high_resolution_clock::now();
 
 		int limit = isin.size();
 		for(int offset = 0; offset+12 <=limit ; offset +=12 ){
 			auto s = isin.substr(offset, 12 );
-			transactionless x;
-			std::multiset<transaction *>::iterator b = std::lower_bound( isin_index_setindex[s].begin(),isin_index_setindex[s].end(), startdate ,x);
-		    std::multiset<transaction *>::iterator e = std::upper_bound( b ,isin_index_setindex[s].end(), stopdate , x );
 
-			if (b != isin_index_setindex[s].end() ){
+			// date must be encapsulated in an object for compare
+			datelimit.date = startdate;
+			auto b =  isin_index_setindex[s].lower_bound(&datelimit);
+			auto e =  isin_index_setindex[s].end();
+
+			if (b != e ){
 				for(auto j = b ; j !=e ; ++j ){
-					//if ((*j)->date >= startdate && (*j)->date < stopdate){
-						t.amount += (*j)->amount;
-						t.courtage += (*j)->courtage;
-						++t.num_trans;
-					//}else{
-					//	std::cout<< "Assert failed"<<std::endl;
-					//}
+					if ((*j)->date >= stopdate){
+						break;
+					}
+					t.amount   += (*j)->amount;
+					t.courtage += (*j)->courtage;
+					++t.num_trans;
 				}
 				if( offset+13 < limit && isin[offset+12] == ';' ){
 					++offset;
