@@ -138,6 +138,7 @@ class Ledger{
 		std::map<std::string, std::list<transaction*>> isin_index;
 
 		std::map<unsigned int,decltype(ledger.end())> date_index;
+
 		mutable std::shared_mutex mutex;
 
 public:
@@ -198,8 +199,7 @@ public:
 					// do nothing if already exist
 					date_index.emplace(t.date,iter);
 				} else {
-					// Todo overload equal operator for transaction ...
-					// also last transaction could be identical if identical transaction have been done
+					// Knowm limitation: last transaction could be identical if identical transaction have been done
 					// multiple times the same day.
 					if (t == ledger[0] ) {
 						for ( auto item = que.rbegin(); item != que.rend() ; ++item ){
@@ -249,8 +249,19 @@ public:
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout << i.first<<" is "<< ( was_sorted?"sorted":"unsorted" ) <<" x "<< count << "  " <<time_span.count()<<std::endl;
 		}
-		return status;
+		// Regenerate date index
+		std::map<unsigned int,decltype(ledger.end())> new_index;
 
+		{
+			for (auto item = ledger.begin(); item != ledger.end(); item++ ){
+				new_index.emplace((*item).date, item);
+			}
+			// check
+
+			auto pair = std::mismatch( new_index.begin(), new_index.end(),date_index.begin() );
+			status = status && (pair.first  == new_index.end() &&   pair.second == date_index.end() );
+		}
+		return status;
 	}
 
 
