@@ -44,7 +44,11 @@ class transaction{
 	double courtage;
 	uint32_t date;
 	bool operator== (transaction &t){
-		return (t.courtage== courtage && t.isin ==  isin &&  t.date == date && t.amount == amount && t.curenecy == curenecy && t.sec_name == sec_name );
+		return (t.courtage == courtage && t.isin ==  isin &&  t.date == date && t.amount == amount && t.curenecy == curenecy && t.sec_name == sec_name );
+	}
+	bool operator< (transaction &t){
+		//	std::cout << "DBG"<< this->date <<" < " <<t.date << std::endl;
+		return this->date < t.date;
 	}
 };
 
@@ -120,12 +124,20 @@ double parse_number(std::string_view s){
 	return (signbit? -(double) decimals : (double) decimals);;
 }
 
-// auto comp = []( transaction* &t1, transaction* &t2){ return t1->date < t2->date;};
+
+class transactionless{
+	public:
+	bool operator() (transaction *a, transaction *b) const { return a->date < b->date; }
+	bool operator() (transaction *a, uint32_t b) const { return a->date < b; }
+	bool operator() (uint32_t a, transaction *b) const { return a < b->date; }
+};
 
 class Ledger{
 		/// Transactions can be added to ledger but never removed. Iterators will be valid
 		std::deque<transaction> ledger;
 		std::map<std::string, std::list<transaction*>> isin_index;
+		std::map<std::string, std::multiset<transaction*,transactionless>>  isin_index_setindex;
+
 		std::map<unsigned int,decltype(ledger.end())> date_index;
 		mutable std::shared_mutex mutex;
 
@@ -182,6 +194,7 @@ public:
 					/// Conclusion:: the cost of creating the index is payed back the first time it is used !
 
 					isin_index[isin].push_front( &*iter);
+					isin_index_setindex[isin].insert(&*iter);
 
 					// Save iterator first date in index.
 					// do nothing if already exist
@@ -196,6 +209,8 @@ public:
 							auto iter = ledger.begin();
 							// we are now rebuilding the data in reverse order;
 							isin_index[t.isin].push_back( &*iter);
+							isin_index_setindex[t.isin].insert(&*iter);
+
 							// overwrite index to save the first date - which will be called last
 							date_index[t.date] = iter;
 
@@ -261,7 +276,22 @@ public:
 			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 			std::cout << i.first<<" is "<< ( was_sorted?"sorted":"unsorted" ) <<" x "<< count << "  " <<time_span.count()<<std::endl;
 		}
+ 		for(auto i: isin_index_setindex){
+			auto t1 = std::chrono::high_resolution_clock::now();
+			// i.second is a list of all tranactions with one security in same order
+			// as found on ledger - which was sorted.
+			int count = 0;
+			
+			bool was_sorted = std::is_sorted(i.second.cbegin(),i.second.cend(),[&count]( auto &t1, auto &t2){ ++count; return t1->date < t2->date;}  );
+			// for (auto xx : i.second) {
+			// 	std::cout << "set "<<xx->isin <<" : "<< xx->date<<std::endl; 
+			// }
 
+			auto t2 = std::chrono::high_resolution_clock::now();
+			status = status & was_sorted;
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+			std::cout << "SET: " << i.first<<" is "<< ( was_sorted?"sorted":"unsorted" ) <<" x "<< count << "  " <<time_span.count()<<std::endl;
+		}
 		return status;
 
 	}
@@ -279,12 +309,11 @@ public:
 		int limit = isin.size();
 		for(int offset = 0; offset+12 <=limit ; offset +=12 ){
 			auto s = isin.substr(offset, 12 );
-			// std::list<decltype(ledger.end())> &list = isin_index[s] ;
-
-			// auto b = std::lower_bound( list.begin(), startdate,[](decltype(ledger.end()) &t1, decltype(ledger.end()) &t2){ return t1->date < t2->date;} );
-			// auto e = std::upper_bound( b ,           stopdate, [](decltype(ledger.end()) &t1, decltype(ledger.end()) &t2){ return t1->date < t2->date;} );
 			for(auto j : isin_index[s] ){
-				if (j->date >= startdate && j->date < stopdate){
+				if (j->date >= stopdate){
+					break;
+				}
+				if (j->date >= startdate ){
 					t.amount += j->amount;
 					t.courtage += j->courtage;
 					++t.num_trans;
@@ -298,7 +327,47 @@ public:
 		auto t2 = std::chrono::high_resolution_clock::now();
 
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-		std::cout<<"Gathering data took "<< time_span.count()<<std::endl;
+		std::cout<<"impl1 Gathering data took "<< time_span.count()<<std::endl;
+		std::cout << "Transgalactic Sum: "<< t.amount <<std::endl ;
+
+		return t;
+	}
+	transaction_set sum_string2 (const std::string & isin , uint32_t startdate=0 ,uint32_t stopdate=30000000){
+		transaction_set t;
+		t.courtage = 0;
+		t.amount = 0;
+		t.num_trans = 0;
+
+		std::shared_lock lock(mutex);
+		auto t1 = std::chrono::high_resolution_clock::now();
+
+		int limit = isin.size();
+		for(int offset = 0; offset+12 <=limit ; offset +=12 ){
+			auto s = isin.substr(offset, 12 );
+			transactionless x;
+			std::multiset<transaction *>::iterator b = std::lower_bound( isin_index_setindex[s].begin(),isin_index_setindex[s].end(), startdate ,x);
+		    std::multiset<transaction *>::iterator e = std::upper_bound( b ,isin_index_setindex[s].end(), stopdate , x );
+
+			if (b != isin_index_setindex[s].end() ){
+				for(auto j = b ; j !=e ; ++j ){
+					//if ((*j)->date >= startdate && (*j)->date < stopdate){
+						t.amount += (*j)->amount;
+						t.courtage += (*j)->courtage;
+						++t.num_trans;
+					//}else{
+					//	std::cout<< "Assert failed"<<std::endl;
+					//}
+				}
+				if( offset+13 < limit && isin[offset+12] == ';' ){
+					++offset;
+				}
+			}
+		}
+
+		auto t2 = std::chrono::high_resolution_clock::now();
+
+		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+		std::cout<<"impl2 Gathering data took "<< time_span.count()<<std::endl;
 		std::cout << "Transgalactic Sum: "<< t.amount <<std::endl ;
 
 		return t;
@@ -442,6 +511,8 @@ int network_me(){
 								if(subcommand.size() >=12){
 									auto ans = avanza.sum_string(subcommand,startdate,stopdate);
 									n->stream << ans.to_json()<< std::endl;
+									auto ans2 = avanza.sum_string2(subcommand,startdate,stopdate);
+									n->stream << ans2.to_json()<< std::endl;
 								}else{
 									n->stream << "Request size too short "<<subcommand.size() << std::endl;
 								}
