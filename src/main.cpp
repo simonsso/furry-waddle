@@ -206,12 +206,12 @@ public:
 							ledger.push_front(*item);
 							auto iter = ledger.begin();
 							// we are now rebuilding the data in reverse order;
-							isin_index[t.isin].push_back( &*iter);
+							isin_index[item->isin].push_back( &*iter);
 
 							// overwrite index to save the first date - which will be called last
 							date_index[t.date] = iter;
-
 						}
+						break;
 					}
 					que.push_back(t);
 				}
