@@ -250,8 +250,7 @@ public:
 			std::cout << i.first<<" is "<< ( was_sorted?"sorted":"unsorted" ) <<" x "<< count << "  " <<time_span.count()<<std::endl;
 		}
 		// Regenerate date index
-		std::map<unsigned int,decltype(ledger.end())> new_index;
-
+		decltype(date_index) new_index;
 		{
 			auto t1 = std::chrono::high_resolution_clock::now();
 			for (auto item = ledger.begin(); item != ledger.end(); item++ ){
