@@ -1,5 +1,5 @@
-#ifdef NETWORK_ME
+#ifndef NETWORK_ME
 #define NETWORK_ME
-#include "include/ledger.hpp"
-int network_me(Ledger *bank) ;
+#include "ledger.hpp"
+int network_me(Ledger *) ;
 #endif
