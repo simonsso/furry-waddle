@@ -79,6 +79,17 @@ double parse_number(std::string_view s) {
    ;
 }
 
+   std::string transaction_set::to_json() {
+      boost::property_tree::ptree pt;
+      pt.put("isin.amount", amount);
+      pt.put("isin.brokerage", brokerage);
+      pt.put("isin.num", num_trans);
+
+      std::ostringstream buf;
+      boost::property_tree::write_json(buf, pt, false);
+      return buf.str();
+   };
+   
 class transactionless {
   public:
    bool operator()(transaction *a, transaction *b) const { return a->date < b->date; }

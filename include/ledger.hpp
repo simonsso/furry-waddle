@@ -42,16 +42,7 @@ class transaction_set {
    double amount;
    double brokerage;
    int num_trans;
-   std::string to_json() {
-      boost::property_tree::ptree pt;
-      pt.put("isin.amount", amount);
-      pt.put("isin.brokerage", brokerage);
-      pt.put("isin.num", num_trans);
-
-      std::ostringstream buf;
-      boost::property_tree::write_json(buf, pt, false);
-      return buf.str();
-   };
+   std::string to_json();
 };
 class Ledger {
    /// Transactions can be added to ledger but never removed. Iterators will be valid
