@@ -1,8 +1,10 @@
+#ifndef LEDGER_HPP
+#define LEDGER_HPP
+
 #include <deque>
 #include <list>
 #include <map>
-
-#include <mutex>  // For std::unique_lock
+#include <mutex>
 
 
 class transaction {
@@ -71,3 +73,4 @@ public:
    /// Orignal seach code moved into this function.
    void find_something();
 };
+#endif
