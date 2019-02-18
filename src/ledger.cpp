@@ -75,7 +75,13 @@ double parse_number(std::string_view s) {
    return (signbit ? -(double)decimals : (double)decimals);
 }
 
-std::string transaction_set::to_json() {
+TransactionSet::TransactionSet() {
+   brokerage = 0;
+   amount = 0;
+   num_trans = 0;
+}
+
+std::string TransactionSet::to_json() {
    boost::property_tree::ptree pt;
    pt.put("isin.amount", amount);
    pt.put("isin.brokerage", brokerage);
@@ -86,18 +92,29 @@ std::string transaction_set::to_json() {
    return buf.str();
 };
 
-class transactionless {
+
+class Transactionless {
   public:
-   bool operator()(const transaction *const a, const transaction *const b) const { return a->date < b->date; }
-   bool operator()(const transaction *const a, uint32_t b) const { return a->date < b; }
-   bool operator()(const uint32_t a, const transaction *const b) const { return a < b->date; }
+   bool operator()(const Transaction *const a, const Transaction *const b) const { return a->date < b->date; }
+   bool operator()(const Transaction *const a, uint32_t b) const { return a->date < b; }
+   bool operator()(const uint32_t a, const Transaction *const b) const { return a < b->date; }
 };
+
+/// Tranasaction Implementation
+bool Transaction::operator==(const Transaction &t) const {
+   return (t.brokerage == brokerage && t.isin == isin && t.date == date && t.amount == amount && t.curenecy == curenecy &&
+           t.sec_name == sec_name);
+}
+bool Transaction::operator<(const Transaction &t) const { return date < t.date; }
+
+
+
 void Ledger::import_csv(std::istream &infile) {
    std::unique_lock lock(mutex);
    std::string line;
    auto t1 = std::chrono::high_resolution_clock::now();
    bool pushing_data = ledger.empty();
-   std::list<transaction> que;
+   std::list<Transaction> que;
    while (getline(infile, line)) {
       const char *index = nullptr;
       index = line.c_str();
@@ -118,7 +135,7 @@ void Ledger::import_csv(std::istream &infile) {
 
          auto isin = line.substr(field_index[8], 12);
 
-         transaction t;
+         Transaction t;
          t.date = parse_date(line.substr(0, field_index[0] - 1));
          t.amount = parse_number(line.substr(field_index[5], field_index[6] - field_index[5] - 1));
          t.isin = isin;
@@ -147,7 +164,7 @@ void Ledger::import_csv(std::istream &infile) {
             // do nothing if already exist
             date_index.emplace(t.date, iter);
          } else {
-            // Knowm limitation: last transaction could be identical if identical transaction have been done
+            // Knowm limitation: last Transaction could be identical if identical Transaction have been done
             // multiple times the same day.
             if (t == ledger[0]) {
                for (auto item = que.rbegin(); item != que.rend(); ++item) {
@@ -178,7 +195,7 @@ bool Ledger::data_integrity_self_check() {
    bool status = true;
    {
       auto t1 = std::chrono::high_resolution_clock::now();
-      bool was_sorted = std::is_sorted(ledger.begin(), ledger.end(), [](transaction &t1, transaction &t2) { return t1.date > t2.date; });
+      bool was_sorted = std::is_sorted(ledger.begin(), ledger.end(), [](Transaction &t1, Transaction &t2) { return t1.date > t2.date; });
       auto t2 = std::chrono::high_resolution_clock::now();
 
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
@@ -190,7 +207,7 @@ bool Ledger::data_integrity_self_check() {
       // i.second is a list of all tranactions with one security in same order
       // as found on ledger - which was sorted.
       int count = 0;
-      bool was_sorted = std::is_sorted(i.second.begin(), i.second.end(), [&count](transaction *&t1, transaction *&t2) {
+      bool was_sorted = std::is_sorted(i.second.begin(), i.second.end(), [&count](Transaction *&t1, Transaction *&t2) {
          ++count;
          return t1->date < t2->date;
       });
@@ -223,17 +240,13 @@ bool Ledger::data_integrity_self_check() {
    return status;
 }
 
-transaction_set Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t stopdate) {
-   transaction_set t;
-   t.brokerage = 0;
-   t.amount = 0;
-   t.num_trans = 0;
+TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t stopdate) {
+   TransactionSet t;
 
    std::shared_lock lock(mutex);
    auto t1 = std::chrono::high_resolution_clock::now();
 
-   int limit = isin.size();
-   for (int offset = 0; offset + 12 <= limit; offset += 12) {
+   for (unsigned int offset = 0; offset + 12 <= isin.size(); offset += 12) {
       auto s = isin.substr(offset, 12);
       for (auto j : isin_index[s]) {
          if (j->date >= stopdate) {
@@ -245,7 +258,7 @@ transaction_set Ledger::sum(const std::string &isin, uint32_t startdate, uint32_
             ++t.num_trans;
          }
       }
-      if (offset + 13 < limit && isin[offset + 12] == ';') {
+      if (offset + 13 < isin.size() && isin[offset + 12] == ';') {
          ++offset;
       }
    }
