@@ -262,14 +262,18 @@ transaction_set Ledger::sum(const std::string &isin, uint32_t startdate, uint32_
 double Ledger::april(int startdate, int stopdate) {
    std::shared_lock lock(mutex);
    auto t1 = std::chrono::high_resolution_clock::now();
-
-   decltype(date_index.begin()) b = date_index.lower_bound(startdate);
-   decltype(date_index.begin()) e = date_index.upper_bound(stopdate);
-
    double sum = 0;
-   if (b != date_index.end()) {
-      for (decltype(ledger.begin()) i = b->second; i != e->second; --i) {
-         sum += i->brokerage;
+
+   auto begin_dateindex_iter = date_index.lower_bound(startdate);
+   if (begin_dateindex_iter != date_index.end()) {
+      auto dateindex_final_date = date_index.upper_bound(stopdate);
+
+      // Todo there is need for a unit test of the corner case.
+      auto ledger_final_date_iter = ( dateindex_final_date != date_index.end()) ? dateindex_final_date->second : ledger.begin()-1 ;
+
+      // dates are stored falling order.
+      for (auto legeriter = begin_dateindex_iter->second; legeriter != ledger_final_date_iter; --legeriter) {
+         sum += legeriter->brokerage;
       }
    }
    auto t2 = std::chrono::high_resolution_clock::now();
