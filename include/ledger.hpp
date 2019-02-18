@@ -5,7 +5,9 @@
 #include <list>
 #include <map>
 #include <mutex>
-
+#include <string>
+#include <string_view>
+#include <cstdint>
 
 class transaction {
   public:

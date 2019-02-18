@@ -8,6 +8,7 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <cstdint>
 
 #include <chrono>
 #include <cmath>
