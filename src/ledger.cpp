@@ -245,8 +245,9 @@ TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t
 
    std::shared_lock lock(mutex);
    auto t1 = std::chrono::high_resolution_clock::now();
+   const std::string::size_type limit = isin.size();
 
-   for (unsigned int offset = 0; offset + 12 <= isin.size(); offset += 12) {
+   for (std::string::size_type offset = 0; offset + 12 <= limit; offset += 12) {
       auto s = isin.substr(offset, 12);
       for (auto j : isin_index[s]) {
          if (j->date >= stopdate) {
@@ -258,7 +259,7 @@ TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t
             ++t.num_trans;
          }
       }
-      if (offset + 13 < isin.size() && isin[offset + 12] == ';') {
+      if (offset + 13 < limit && isin[offset + 12] == ';') {
          ++offset;
       }
    }
