@@ -24,8 +24,7 @@ unsigned int parse_date(std::string_view s) {
    if (s.size() != 10) {
       return 0;
    };
-   std::string::size_type sz;  // alias of size_t
-                               //  s.data is unsafe -
+   size_t sz;
    int date = std::stoi(s.data(), &sz);
    if (sz != 4) {
       return 0;
@@ -57,8 +56,8 @@ double parse_number(std::string_view s) {
       return 0;
    };
    double decimals = 0;
-   std::string::size_type sz;  // alias of size_t
-                               //  s.data is unsafe -
+   size_t sz;
+
    int integrer_part = std::stoi(s.data(), &sz);
    if (sz >= s.length()) {
       return (signbit ? -(double)integrer_part : (double)integrer_part);
@@ -202,7 +201,7 @@ bool Ledger::data_integrity_self_check() {
 
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
       std::cout << "Ledger is:" << (was_sorted ? "sorted" : "unsorted") << "  " << time_span.count() << std::endl;
-      status = status & was_sorted;
+      status = status && was_sorted;
    }
    for (const auto i : isin_index) {
       const auto t1 = std::chrono::high_resolution_clock::now();
@@ -215,7 +214,7 @@ bool Ledger::data_integrity_self_check() {
       });
 
       const auto t2 = std::chrono::high_resolution_clock::now();
-      status = status & was_sorted;
+      status = status && was_sorted;
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
       std::cout << i.first << " is " << (was_sorted ? "sorted" : "unsorted") << " x " << count << "  " << time_span.count() << std::endl;
    }
@@ -223,8 +222,8 @@ bool Ledger::data_integrity_self_check() {
    LedgerDateIndex new_index;
    {
       const auto t1 = std::chrono::high_resolution_clock::now();
-      for (auto item = ledger.begin(); item != ledger.end(); item++) {
-         new_index.emplace((*item).date, item);
+      for (LedgerDeque::const_iterator item = ledger.cbegin(); item != ledger.cend(); item++) {
+         new_index.emplace(item->date, item);
       }
       const auto t2 = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
