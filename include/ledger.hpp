@@ -45,12 +45,18 @@ struct TransactionSet {
    std::string to_json();
 };
 
-class Ledger {
-   /// Transactions can be added to ledger but never removed. Iterators will be valid
-   std::deque<Transaction> ledger;
-   std::map<std::string, std::list<Transaction *>> isin_index;
 
-   std::map<unsigned int, decltype(ledger.end())> date_index;
+
+class Ledger {
+
+   // Transactions can be added to ledger but never removed. Saved Iterators will be valid
+   using LedgerDeque = std::deque<Transaction>;
+   using LedgerIsinIndex = std::map<std::string, std::list<Transaction *>>;
+   using LedgerDateIndex = std::map<unsigned int, LedgerDeque::const_iterator>;
+
+   LedgerDeque ledger;
+   LedgerIsinIndex isin_index;
+   LedgerDateIndex date_index;
 
    mutable std::shared_mutex mutex;
 

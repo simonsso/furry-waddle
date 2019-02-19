@@ -218,7 +218,7 @@ bool Ledger::data_integrity_self_check() {
       std::cout << i.first << " is " << (was_sorted ? "sorted" : "unsorted") << " x " << count << "  " << time_span.count() << std::endl;
    }
    // Regenerate date index
-   decltype(date_index) new_index;
+   LedgerDateIndex new_index;
    {
       const auto t1 = std::chrono::high_resolution_clock::now();
       for (auto item = ledger.begin(); item != ledger.end(); item++) {
