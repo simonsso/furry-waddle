@@ -52,7 +52,7 @@ class Ledger {
    // Transactions can be added to ledger but never removed. Saved Iterators will be valid
    using LedgerDeque = std::deque<Transaction>;
    using LedgerIsinIndex = std::map<std::string, std::list<Transaction const*>>;
-   using LedgerDateIndex = std::map<unsigned int, LedgerDeque::const_iterator>;
+   using LedgerDateIndex = std::map<uint32_t, LedgerDeque::const_iterator>;
 
    LedgerDeque ledger;
    LedgerIsinIndex isin_index;
