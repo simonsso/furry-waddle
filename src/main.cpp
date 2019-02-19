@@ -8,6 +8,7 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <cstdint>
 
 #include <chrono>
 #include <cmath>
@@ -67,5 +68,7 @@ int main(int argc, char *argv[]) {
    avanza.sum("LU0050427557");
 
    avanza.sum("");
+
+   avanza.april(20140101,20190101);
    t1.join();
 }
