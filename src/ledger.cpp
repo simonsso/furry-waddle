@@ -189,14 +189,13 @@ void Ledger::import_csv(std::istream &infile) {
 }
 
 /// Verify all asumptionions on data was correct
-bool Ledger::data_integrity_self_check() {
+bool Ledger::data_integrity_self_check() const {
    std::unique_lock lock(mutex);
    bool status = true;
    std::cout << "Ledger length is: " << ledger.size() << std::endl;
-
    {
       const auto t1 = std::chrono::high_resolution_clock::now();
-      bool was_sorted = std::is_sorted(ledger.begin(), ledger.end(), [](Transaction &t1, Transaction &t2) { return t1.date > t2.date; });
+      bool was_sorted = std::is_sorted(ledger.begin(), ledger.end(), [](const Transaction &t1, const Transaction &t2) { return t1.date > t2.date; });
       const auto t2 = std::chrono::high_resolution_clock::now();
 
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
@@ -241,7 +240,7 @@ bool Ledger::data_integrity_self_check() {
    return status;
 }
 
-TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t stopdate) {
+TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t stopdate) const {
    TransactionSet t;
 
    std::shared_lock lock(mutex);
@@ -274,7 +273,7 @@ TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t
    return t;
 }
 //
-double Ledger::april(int startdate, int stopdate) {
+double Ledger::april(int startdate, int stopdate) const {
    std::shared_lock lock(mutex);
    const auto t1 = std::chrono::high_resolution_clock::now();
    double sum = 0;
@@ -300,7 +299,7 @@ double Ledger::april(int startdate, int stopdate) {
 }
 
 /// Orignal seach code moved into this function.
-void Ledger::find_something() {
+void Ledger::find_something() const {
    std::shared_lock lock(mutex);
    //  Calculate total sum for all
 

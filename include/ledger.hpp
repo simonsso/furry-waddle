@@ -55,7 +55,7 @@ class Ledger {
    using LedgerDateIndex = std::map<uint32_t, LedgerDeque::const_iterator>;
 
    LedgerDeque ledger;
-   LedgerIsinIndex isin_index;
+   mutable LedgerIsinIndex isin_index;
    LedgerDateIndex date_index;
 
    mutable std::shared_mutex mutex;
@@ -64,12 +64,12 @@ class Ledger {
    /// Import from csv stream
    void import_csv(std::istream &infile);
    /// Verify all asumptionions on data was correct
-   bool data_integrity_self_check();
+   bool data_integrity_self_check() const;
 
-   TransactionSet sum(const std::string &isin, uint32_t startdate = 0, uint32_t stopdate = 30000000);
+   TransactionSet sum(const std::string &isin, uint32_t startdate = 0, uint32_t stopdate = 30000000) const;
    //
-   double april(int startdate, int stopdate);
+   double april(int startdate, int stopdate) const;
    /// Orignal seach code moved into this function.
-   void find_something();
+   void find_something() const;
 };
 #endif
