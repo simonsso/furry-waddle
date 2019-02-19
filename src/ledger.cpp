@@ -169,7 +169,7 @@ void Ledger::import_csv(std::istream &infile) {
             if (t == ledger[0]) {
                for (auto item = que.rbegin(); item != que.rend(); ++item) {
                   ledger.push_front(*item);
-                  auto iter = ledger.begin();
+                  LedgerDeque::const_iterator iter = ledger.begin();
                   // we are now rebuilding the data in reverse order;
                   isin_index[item->isin].push_back(&*iter);
 
@@ -202,12 +202,12 @@ bool Ledger::data_integrity_self_check() {
       std::cout << "Ledger is:" << (was_sorted ? "sorted" : "unsorted") << "  " << time_span.count() << std::endl;
       status = status & was_sorted;
    }
-   for (auto i : isin_index) {
+   for (const auto i : isin_index) {
       const auto t1 = std::chrono::high_resolution_clock::now();
       // i.second is a list of all tranactions with one security in same order
       // as found on ledger - which was sorted.
       int count = 0;
-      bool was_sorted = std::is_sorted(i.second.begin(), i.second.end(), [&count](Transaction *&t1, Transaction *&t2) {
+      bool was_sorted = std::is_sorted(i.second.begin(), i.second.end(), [&count](const Transaction *t1, const Transaction *t2) {
          ++count;
          return t1->date < t2->date;
       });
@@ -278,16 +278,16 @@ double Ledger::april(int startdate, int stopdate) {
    const auto t1 = std::chrono::high_resolution_clock::now();
    double sum = 0;
 
-   auto begin_dateindex_iter = date_index.lower_bound(startdate);
+   const auto &begin_dateindex_iter = date_index.lower_bound(startdate);
    if (begin_dateindex_iter != date_index.end()) {
-      const auto dateindex_final_date = date_index.upper_bound(stopdate);
+      const auto &dateindex_final_date = date_index.upper_bound(stopdate);
 
       const auto &ledger_final_date_iter = ( dateindex_final_date != date_index.end()) ? dateindex_final_date->second : ledger.begin()-1 ;
       const auto &ledger_fist_date_iter = begin_dateindex_iter->second;
 
       // Todo there is need for a unit test of the corner case.
       // dates are stored falling order.
-      for (auto legeriter = ledger_fist_date_iter ; legeriter != ledger_final_date_iter; --legeriter) {
+      for (LedgerDeque::const_iterator legeriter = ledger_fist_date_iter ; legeriter != ledger_final_date_iter; --legeriter) {
          sum += legeriter->brokerage;
       }
    }
