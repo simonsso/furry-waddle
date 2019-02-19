@@ -193,6 +193,8 @@ void Ledger::import_csv(std::istream &infile) {
 bool Ledger::data_integrity_self_check() {
    std::unique_lock lock(mutex);
    bool status = true;
+   std::cout << "Ledger length is: " << ledger.size() << std::endl;
+
    {
       const auto t1 = std::chrono::high_resolution_clock::now();
       bool was_sorted = std::is_sorted(ledger.begin(), ledger.end(), [](Transaction &t1, Transaction &t2) { return t1.date > t2.date; });

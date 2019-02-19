@@ -165,5 +165,7 @@ int main(int argc, char *argv[]) {
    avanza.sum("LU0050427557");
 
    avanza.sum("");
+
+   avanza.april(20140101,20190101);
    t1.join();
 }
