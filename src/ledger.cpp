@@ -112,13 +112,13 @@ bool Transaction::operator<(const Transaction &t) const { return date < t.date; 
 void Ledger::import_csv(std::istream &infile) {
    std::unique_lock lock(mutex);
    std::string line;
-   auto t1 = std::chrono::high_resolution_clock::now();
+   const auto t1 = std::chrono::high_resolution_clock::now();
    bool pushing_data = ledger.empty();
    std::list<Transaction> que;
    while (getline(infile, line)) {
       const char *index = nullptr;
       index = line.c_str();
-      auto index0 = index;
+      const auto index0 = index;
       std::vector<int> field_index;
       while (*index) {
          if (*index++ == ';') {
@@ -133,7 +133,7 @@ void Ledger::import_csv(std::istream &infile) {
          // 2019-02-01;Depå;Insättning;Insättning;-;-;1000,00;-;SEK;-
          // 2019-01-29;ISK;Köp;Handelsbanken B;20;105,00;-2105;5,00;SEK;SE0007100607
 
-         auto isin = line.substr(field_index[8], 12);
+         const auto isin = line.substr(field_index[8], 12);
 
          Transaction t;
          t.date = parse_date(line.substr(0, field_index[0] - 1));
@@ -144,7 +144,7 @@ void Ledger::import_csv(std::istream &infile) {
          t.brokerage = parse_number(line.substr(field_index[6], field_index[7] - field_index[6] - 1));
 
          if (pushing_data) {
-            auto iter = ledger.insert(ledger.end(), t);
+            const auto iter = ledger.insert(ledger.end(), t);
 
             /// create an index with isin
             /// TOTAL execution time - two iterations
@@ -182,7 +182,7 @@ void Ledger::import_csv(std::istream &infile) {
          }
       }
    }
-   auto t2 = std::chrono::high_resolution_clock::now();
+   const auto t2 = std::chrono::high_resolution_clock::now();
 
    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
    std::cout << "Reading data took " << time_span.count() << std::endl << std::endl << std::endl << std::endl;
@@ -194,16 +194,16 @@ bool Ledger::data_integrity_self_check() {
    std::unique_lock lock(mutex);
    bool status = true;
    {
-      auto t1 = std::chrono::high_resolution_clock::now();
+      const auto t1 = std::chrono::high_resolution_clock::now();
       bool was_sorted = std::is_sorted(ledger.begin(), ledger.end(), [](Transaction &t1, Transaction &t2) { return t1.date > t2.date; });
-      auto t2 = std::chrono::high_resolution_clock::now();
+      const auto t2 = std::chrono::high_resolution_clock::now();
 
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
       std::cout << "Ledger is:" << (was_sorted ? "sorted" : "unsorted") << "  " << time_span.count() << std::endl;
       status = status & was_sorted;
    }
    for (auto i : isin_index) {
-      auto t1 = std::chrono::high_resolution_clock::now();
+      const auto t1 = std::chrono::high_resolution_clock::now();
       // i.second is a list of all tranactions with one security in same order
       // as found on ledger - which was sorted.
       int count = 0;
@@ -212,7 +212,7 @@ bool Ledger::data_integrity_self_check() {
          return t1->date < t2->date;
       });
 
-      auto t2 = std::chrono::high_resolution_clock::now();
+      const auto t2 = std::chrono::high_resolution_clock::now();
       status = status & was_sorted;
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
       std::cout << i.first << " is " << (was_sorted ? "sorted" : "unsorted") << " x " << count << "  " << time_span.count() << std::endl;
@@ -220,20 +220,20 @@ bool Ledger::data_integrity_self_check() {
    // Regenerate date index
    decltype(date_index) new_index;
    {
-      auto t1 = std::chrono::high_resolution_clock::now();
+      const auto t1 = std::chrono::high_resolution_clock::now();
       for (auto item = ledger.begin(); item != ledger.end(); item++) {
          new_index.emplace((*item).date, item);
       }
-      auto t2 = std::chrono::high_resolution_clock::now();
+      const auto t2 = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
       std::cout << "Recreate date index " << time_span.count() << std::endl;
    }
    {
-      auto t1 = std::chrono::high_resolution_clock::now();
+      const auto t1 = std::chrono::high_resolution_clock::now();
       // check
       auto pair = std::mismatch(new_index.begin(), new_index.end(), date_index.begin());
       status = status && (pair.first == new_index.end() && pair.second == date_index.end());
-      auto t2 = std::chrono::high_resolution_clock::now();
+      const auto t2 = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
       std::cout << "Verify date index " << time_span.count() << std::endl;
    }
@@ -244,7 +244,7 @@ TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t
    TransactionSet t;
 
    std::shared_lock lock(mutex);
-   auto t1 = std::chrono::high_resolution_clock::now();
+   const auto t1 = std::chrono::high_resolution_clock::now();
    const std::string::size_type limit = isin.size();
 
    for (std::string::size_type offset = 0; offset + 12 <= limit; offset += 12) {
@@ -264,7 +264,7 @@ TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t
       }
    }
 
-   auto t2 = std::chrono::high_resolution_clock::now();
+   const auto t2 = std::chrono::high_resolution_clock::now();
 
    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
    std::cout << "impl1 Gathering data took " << time_span.count() << std::endl;
@@ -275,22 +275,23 @@ TransactionSet Ledger::sum(const std::string &isin, uint32_t startdate, uint32_t
 //
 double Ledger::april(int startdate, int stopdate) {
    std::shared_lock lock(mutex);
-   auto t1 = std::chrono::high_resolution_clock::now();
+   const auto t1 = std::chrono::high_resolution_clock::now();
    double sum = 0;
 
    auto begin_dateindex_iter = date_index.lower_bound(startdate);
    if (begin_dateindex_iter != date_index.end()) {
-      auto dateindex_final_date = date_index.upper_bound(stopdate);
+      const auto dateindex_final_date = date_index.upper_bound(stopdate);
+
+      const auto &ledger_final_date_iter = ( dateindex_final_date != date_index.end()) ? dateindex_final_date->second : ledger.begin()-1 ;
+      const auto &ledger_fist_date_iter = begin_dateindex_iter->second;
 
       // Todo there is need for a unit test of the corner case.
-      auto ledger_final_date_iter = ( dateindex_final_date != date_index.end()) ? dateindex_final_date->second : ledger.begin()-1 ;
-
       // dates are stored falling order.
-      for (auto legeriter = begin_dateindex_iter->second; legeriter != ledger_final_date_iter; --legeriter) {
+      for (auto legeriter = ledger_fist_date_iter ; legeriter != ledger_final_date_iter; --legeriter) {
          sum += legeriter->brokerage;
       }
    }
-   auto t2 = std::chrono::high_resolution_clock::now();
+   const auto t2 = std::chrono::high_resolution_clock::now();
    std::cout << sum << " brokerage payed in April" << std::endl;
    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
    std::cout << "brokerage calc took " << time_span.count() << std::endl;
@@ -302,15 +303,15 @@ void Ledger::find_something() {
    std::shared_lock lock(mutex);
    //  Calculate total sum for all
 
-   for (auto i : isin_index) {
+   for (const auto i : isin_index) {
       double sum = 0;
-      auto t1 = std::chrono::high_resolution_clock::now();
+      const auto t1 = std::chrono::high_resolution_clock::now();
       // i.second is a list of all tranactions with one security in same order
       // as found on ledger - which was sorted.
-      for (auto j : i.second) {
+      for (const auto j : i.second) {
          sum += j->amount;
       }
-      auto t2 = std::chrono::high_resolution_clock::now();
+      const auto t2 = std::chrono::high_resolution_clock::now();
 
       std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
       std::cout << i.first << " Sum: " << sum << "    Gathering data took " << time_span.count() << std::endl;
@@ -327,8 +328,8 @@ void Ledger::find_something() {
    }
    // fpc: SE0000422107 SE0008374250
    double sum = 0;
-   for (auto s : {"SE0000422107", "SE0008374250"}) {
-      for (auto j : isin_index[s]) {
+   for (const auto s : {"SE0000422107", "SE0008374250"}) {
+      for (const auto j : isin_index[s]) {
          sum += j->amount;
       }
    };
@@ -336,8 +337,8 @@ void Ledger::find_something() {
    // adv: SE0009888803 SE0012116267 SE0006219473
 
    sum = 0;
-   for (auto s : {"SE0009888803", "SE0012116267", "SE0006219473"}) {
-      for (auto j : isin_index[s]) {
+   for (const auto s : {"SE0009888803", "SE0012116267", "SE0006219473"}) {
+      for (const auto j : isin_index[s]) {
          sum += j->amount;
       }
    };
