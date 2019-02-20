@@ -23,6 +23,7 @@ struct Transaction {
    //   8"Valuta" : "SEK",
    //   9"ISIN" : "SE0000422107"
    //  },
+   // isin is char[12]
    std::string isin;
    std::string curenecy;
    std::string sec_name;
