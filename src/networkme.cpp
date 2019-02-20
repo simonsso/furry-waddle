@@ -1,11 +1,6 @@
-#include <fstream>
+// #include <fstream>
 #include <iostream>
 #include <string>
-#include <string_view>
-
-#include <chrono>
-#include <cmath>
-#include <utility>
 
 #include <mutex>  // For std::unique_lock
 #include <shared_mutex>
@@ -44,8 +39,6 @@ int network_me(const Ledger* const bank) {
                   while (n->stream) {
                      std::string command;
                      n->stream >> command;
-
-                     std::string_view request = command;
                      // if stream was closed while waiting for imput command will be empty
                      // break out of loop and free resources
                      if (command == "") {
