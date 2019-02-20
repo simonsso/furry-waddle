@@ -102,7 +102,8 @@ int network_me(Ledger *bank) {
                       } else
                           // Command - Sum ISIN[[;]ISIN]*
                           if (command.size() >= 12) {
-                         auto ans = bank->sum(command);
+                             // For now end of time is defined as 2020-01-01
+                               auto ans = bank->sum(command , 0 , 20200101 );
                          n->stream << ans.to_json() << std::endl;
                       } else {
                          n->stream << "Request size too short " << command.size() << std::endl;
@@ -122,6 +123,10 @@ int network_me(Ledger *bank) {
    }
    return 0;
 }
+
+///
+#define EPOC_BEGIN 0
+#define EPOC_END 29990101
 
 int main(int argc, char *argv[]) {
    (void)argc;
@@ -160,11 +165,11 @@ int main(int argc, char *argv[]) {
    }
    // avanza.find_something();
    avanza.data_integrity_self_check();
-   avanza.sum("SE0010546390;SE0010546408;SE0010820613;SE0009382856;SE0000143521");
+   avanza.sum("SE0010546390;SE0010546408;SE0010820613;SE0009382856;SE0000143521" ,EPOC_BEGIN, EPOC_END);
 
-   avanza.sum("LU0050427557");
+   avanza.sum("LU0050427557",EPOC_BEGIN, EPOC_END );
 
-   avanza.sum("");
+   avanza.sum("",EPOC_BEGIN, EPOC_END);
 
    avanza.april(20140101,20190101);
    t1.join();
