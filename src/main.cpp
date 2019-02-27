@@ -24,7 +24,12 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "ledger.hpp"
+
 #include "networkme.hpp"
+
+///
+#define EPOC_BEGIN 0
+#define EPOC_END 29990101
 
 int main(int argc, char *argv[]) {
    (void)argc;
@@ -63,11 +68,11 @@ int main(int argc, char *argv[]) {
    }
    // avanza.find_something();
    avanza.data_integrity_self_check();
-   avanza.sum("SE0010546390;SE0010546408;SE0010820613;SE0009382856;SE0000143521");
+   avanza.sum("SE0010546390;SE0010546408;SE0010820613;SE0009382856;SE0000143521" ,EPOC_BEGIN, EPOC_END);
 
-   avanza.sum("LU0050427557");
+   avanza.sum("LU0050427557",EPOC_BEGIN, EPOC_END );
 
-   avanza.sum("");
+   avanza.sum("",EPOC_BEGIN, EPOC_END);
 
    avanza.april(20140101,20190101);
    t1.join();

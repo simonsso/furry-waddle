@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <locale>
 
 #include <deque>
 #include <list>
@@ -47,31 +48,15 @@ unsigned int parse_date(std::string_view s) {
 // Todo: This could be replaced with a fixed point class
 // but for now double is good.
 double parse_number(std::string_view s) {
-   bool signbit = false;
-   if (s[0] == '-') {
-      signbit = true;
-      s.remove_prefix(1);
-   }
-   if (s.size() == 0) {
-      return 0;
+   double retval;
+   struct Decimalcomma : std::numpunct<char> {
+      char do_decimal_point()   const { return ','; }  // separate with Decimalcomma
    };
-   double decimals = 0;
-   size_t sz;
-
-   int integrer_part = std::stoi(s.data(), &sz);
-   if (sz >= s.length()) {
-      return (signbit ? -(double)integrer_part : (double)integrer_part);
-   }
-   if (s[sz] == ',' || s[sz] == '.') {
-      s.remove_prefix(sz + 1);
-      if (s.length()) {
-         std::string::size_type sz;
-         int d = std::stoi(s.data(), &sz);
-         decimals = (double)d / std::pow(10.0, sz);
-      }
-   }
-   decimals = integrer_part + decimals;
-   return (signbit ? -(double)decimals : (double)decimals);
+   std::stringstream temp_string_stream;
+   temp_string_stream.imbue(std::locale(std::cout.getloc(), new Decimalcomma ));
+   temp_string_stream << s ;
+   temp_string_stream >> retval;
+   return retval;
 }
 
 TransactionSet::TransactionSet() {

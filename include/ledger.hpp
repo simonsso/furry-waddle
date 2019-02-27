@@ -23,6 +23,7 @@ struct Transaction {
    //   8"Valuta" : "SEK",
    //   9"ISIN" : "SE0000422107"
    //  },
+   // isin is char[12]
    std::string isin;
    std::string curenecy;
    std::string sec_name;
@@ -66,8 +67,9 @@ class Ledger {
    /// Verify all asumptionions on data was correct
    bool data_integrity_self_check() const;
 
-   TransactionSet sum(const std::string &isin, uint32_t startdate = 0, uint32_t stopdate = 30000000) const;
-   //
+   TransactionSet sum(const std::string &isin, uint32_t startdate, uint32_t stopdate) const;
+
+   /// Legacy functions
    double april(int startdate, int stopdate) const;
    /// Orignal seach code moved into this function.
    void find_something() const;
